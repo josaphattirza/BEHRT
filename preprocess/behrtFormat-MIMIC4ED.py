@@ -4,6 +4,9 @@ import numpy as np
 import pyspark.sql.functions as F
 from pyspark.sql import SparkSession
 from pyspark.sql import Window
+from pyspark.sql.types import StructType, StructField, StringType, ArrayType, IntegerType
+from itertools import chain
+import itertools
 
 
 #Create PySpark SparkSession
@@ -101,14 +104,33 @@ sparkDF = sparkDF.withColumn('icd_code', F.collect_list('icd_code').over(w)).wit
 
 print(sparkDF.head())
 
-sparkDF.write.parquet('behrt_format_mimic4ed')
+def flatten_array(list2d):
+    merged = list(itertools.chain.from_iterable(list2d))
 
+    return merged
+
+df_main = sparkDF.toPandas()
+
+df_main["icd_code"] = df_main['icd_code'].apply(flatten_array)
+df_main["age_on_admittance"] = df_main['age_on_admittance'].apply(flatten_array)
+
+print(df_main)
+
+schema = StructType([
+    StructField("subject_id", IntegerType(), True),
+    StructField("icd_code", ArrayType(StringType(), True), True),
+    StructField("age_on_admittance", ArrayType(StringType(), True), True)
+])
+
+sparkDF=spark.createDataFrame(df_main, schema=schema)
 
 # diagnoses = EHR(diagnoses).array_flatten(config['col_name']).array_flatten('age')
 # diagnoses.write.parquet(config['output'])
 
+# print(sparkDF)
+sparkDF.show()
 
-
+sparkDF.write.parquet('behrt_format_mimic4ed')
 
 
 
