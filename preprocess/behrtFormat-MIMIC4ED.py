@@ -12,7 +12,7 @@ import itertools
 #Create PySpark SparkSession
 spark = SparkSession.builder \
     .master("local[1]") \
-    .appName("SparkByExamples.com") \
+    .appName("SparkApp") \
     .getOrCreate()
 
 

@@ -27,6 +27,7 @@ class BertEmbeddings(nn.Module):
             posi_ids = torch.zeros_like(word_ids)
 
         word_embed = self.word_embeddings(word_ids)
+        # put breakpoint here to check embeddings compared to 'max(word_ids.reshape(-1))' in debug console
         segment_embed = self.segment_embeddings(seg_ids)
         age_embed = self.age_embeddings(age_ids)
         posi_embeddings = self.posi_embeddings(posi_ids)

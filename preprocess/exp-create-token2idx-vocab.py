@@ -15,37 +15,24 @@ with open('./icd_9to10.pkl','rb') as f:
     dicA = pickle.load(f)
 
 sets = []
+# add icd9 and icd10 to the sets, same categories will be assigned the same index later
 for icd9,icd10 in zip(dicA['icd9'],dicA['icd10']):
     if type(icd10) != str:
-        buffer = set()
-        buffer.add(icd9)
-        buffer.update(icd10)
-        sets.append(buffer)
+        same_category_icd9and10 = set()
+        same_category_icd9and10.add(icd9)
+        same_category_icd9and10.update(icd10)
+        sets.append(same_category_icd9and10)
     
     else:
-        buffer = set()
-        buffer.add(icd9)
-        buffer.add(icd10)
-        sets.append(buffer)
-
-for icd9,icd10 in zip(dicA['icd9'],dicA['icd10']):
-    if type(icd10) != str:
-        buffer = set()
-        buffer.add(icd9)
-        buffer.update(icd10)
-        sets.append(buffer)
+        same_category_icd9and10 = set()
+        same_category_icd9and10.add(icd9)
+        same_category_icd9and10.add(icd10)
+        sets.append(same_category_icd9and10)
     
-    else:
-        buffer = set()
-        buffer.add(icd9)
-        buffer.add(icd10)
-        sets.append(buffer)
-    
+# len of this sets is 12410
 print(sets)
 
-
-
-
+# assign icd9 and 10 that are in the same categories with same index
 for i in range(12410):
     for j in sets[i]:
         token2idx[j] = indexCount
@@ -59,11 +46,13 @@ with open('./icd_10to9.pkl','rb') as f:
 
 
 for icd10,icd9 in zip(dicB['icd10'],dicB['icd9']):
+    # in case icd10 have not been seen before
     if icd10 not in token2idx:
         token2idx[icd10] = indexCount
         indexCount += 1
         continue
-
+    
+    # add icd9 and icd10 to the sets, same categories will be assigned the index that have been found
     if type(icd9) != str:
         for e in icd9:
             token2idx[e] = token2idx[icd10]
