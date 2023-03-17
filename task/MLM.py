@@ -3,7 +3,7 @@ import os
 
 sys.path.append('/home/josaphat/Desktop/research/BEHRT')
 
-os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+# os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 from common.common import create_folder
 from common.pytorch import load_model
@@ -58,10 +58,10 @@ class TrainConfig(object):
 
 file_config = {
     'vocab':'token2idx-added',  # vocabulary idx2token, token2idx
-    'data': './behrt_format_mimic4ed',  # formated data 
+    'data': './behrt_format_mimic4ed_month_based',  # formated data 
     'model_path': 'exp-model', # where to save model
-    'model_name': 'minvisit3-model', # model name
-    'file_name': 'minvisit3-log',  # log path
+    'model_name': 'minvisit3-monthbased-model', # model name
+    'file_name': 'minvisit3-monthbased-log',  # log path
 }
 create_folder(file_config['model_path'])
 
