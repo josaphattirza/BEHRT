@@ -30,7 +30,7 @@ for icd9,icd10 in zip(dicA['icd9'],dicA['icd10']):
         sets.append(same_category_icd9and10)
     
 # len of this sets is 12410
-print(sets)
+# print(sets)
 
 # assign icd9 and 10 that are in the same categories with same index
 for i in range(12410):
@@ -40,6 +40,9 @@ for i in range(12410):
 
 
 print('eof 1')
+
+print(len(token2idx))
+print(indexCount)
 
 with open('./icd_10to9.pkl','rb') as f:
     dicB = pickle.load(f)
@@ -62,11 +65,15 @@ for icd10,icd9 in zip(dicB['icd10'],dicB['icd9']):
 
 print('eof 2') 
 
+print(len(token2idx))
+print(indexCount)
 
+values = token2idx.values()
+values = set(values)
 
 saved_dict = dict()
 saved_dict['token2idx'] = token2idx
 
-with open('./token2idx.pkl','wb') as f:
+with open('./token2idx-grouped.pkl','wb') as f:
     pickle.dump(saved_dict, f)
 

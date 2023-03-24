@@ -25,8 +25,8 @@ import time
 
 file_config = {
     'vocab':'token2idx-added',  # vocab token2idx idx2token
-    'train': '',
-    'test': '',
+    'train': './behrt_format_mimic4ed_month_based_train/',
+    'test': './behrt_format_mimic4ed_month_based_test/',
 }
 
 optim_config = {
@@ -36,20 +36,20 @@ optim_config = {
 }
 
 global_params = {
-    'batch_size': 64,
+    'batch_size': 64, #64
     'gradient_accumulation_steps': 1,
-    'device': 'cuda:0',
-    'output_dir': '',  # output dir
-    'best_name': '', # output model name
+    'device': 'cuda:0', # originally is cuda:0
+    'output_dir': 'exp-nextvisit',  # output dir
+    'best_name': 'minvisit3-monthbased-best', # output model name
     'save_model': True,
-    'max_len_seq': 100,
+    'max_len_seq': 64, # originally is 100, is it okay to change this to match max_seq_len of MLM.py model?
     'max_age': 110,
     'month': 1,
     'age_symbol': None,
-    'min_visit': 5
+    'min_visit': 3 # originally is 5, should change this to 3?
 }
 
-pretrainModel = 'exp-model'  # MLM pretrained model path
+pretrainModel = 'exp-model/minvisit3-monthbased-model' 
 
 create_folder(global_params['output_dir'])
 
@@ -301,6 +301,7 @@ class BertForMultiLabelPrediction(Bert.modeling.BertPreTrainedModel):
 
 
 data = pd.read_parquet(file_config['train']).reset_index(drop=True)
+# how do i set the label? currently i set it to an array of size 1, containing 1
 data['label'] = data.label.apply(lambda x: list(set(x)))
 Dset = NextVisit(token2idx=BertVocab['token2idx'], diag2idx=Vocab_diag, age2idx=ageVocab,dataframe=data, max_len=global_params['max_len_seq'])
 trainload = DataLoader(dataset=Dset, batch_size=global_params['batch_size'], shuffle=True, num_workers=3)
@@ -395,10 +396,11 @@ def train(e):
         nb_tr_examples += input_ids.size(0)
         nb_tr_steps += 1
         
-        if step % 2000==0:
+        if step % 200==0:
             prec, a, b = precision(logits, targets)
             print("epoch: {}\t| Cnt: {}\t| Loss: {}\t| precision: {}".format(e, cnt,temp_loss/2000, prec))
             temp_loss = 0
+            
         
         if (step + 1) % global_params['gradient_accumulation_steps'] == 0:
             optim.step()
@@ -434,3 +436,26 @@ def evaluation():
     tempprc, output, label = precision_test(y, y_label)
     auroc = auroc_test(y, y_label)
     return tempprc, auroc
+
+import warnings
+warnings.filterwarnings(action='ignore')
+optim_config = {
+    'lr': 3e-6,
+    'warmup_proportion': 0.1
+}
+optim = optimiser.adam(params=list(model.named_parameters()), config=optim_config)
+
+best_pre = 0.512
+for e in range(50):
+    train(e)
+    auc, roc= evaluation()
+    if auc >best_pre:
+        # Save a trained model
+        print("** ** * Saving fine - tuned model ** ** * ")
+        model_to_save = model.module if hasattr(model, 'module') else model  # Only save the model it-self
+        output_model_file = os.path.join(global_params['output_dir'],global_params['best_name'])
+        create_folder(global_params['output_dir'])
+        if global_params['save_model']:
+            torch.save(model_to_save.state_dict(), output_model_file)
+        best_pre = auc
+    print('precision : {}, auroc: {},'.format(auc, roc))
