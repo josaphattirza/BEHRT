@@ -303,14 +303,14 @@ class BertForMultiLabelPrediction(Bert.modeling.BertPreTrainedModel):
 data = pd.read_parquet(file_config['train']).reset_index(drop=True)
 # how do i set the label? currently i set it to an array of size 1, containing 1
 data['label'] = data.label.apply(lambda x: list(set(x)))
-Dset = NextVisit(token2idx=BertVocab['token2idx'], diag2idx=Vocab_diag, age2idx=ageVocab,dataframe=data, max_len=global_params['max_len_seq'])
+Dset = NextVisit(token2idx=BertVocab['token2idx'], diag2idx=Vocab_diag, age2idx=ageVocab,dataframe=data, max_len=global_params['max_len_seq'], min_visit=global_params['min_visit'])
 trainload = DataLoader(dataset=Dset, batch_size=global_params['batch_size'], shuffle=True, num_workers=3)
 
 
 
 data = pd.read_parquet(file_config['test']).reset_index(drop=True)
 data['label'] = data.label.apply(lambda x: list(set(x)))
-Dset = NextVisit(token2idx=BertVocab['token2idx'], diag2idx=Vocab_diag, age2idx=ageVocab,dataframe=data, max_len=global_params['max_len_seq'])
+Dset = NextVisit(token2idx=BertVocab['token2idx'], diag2idx=Vocab_diag, age2idx=ageVocab,dataframe=data, max_len=global_params['max_len_seq'], min_visit=global_params['min_visit'])
 testload = DataLoader(dataset=Dset, batch_size=global_params['batch_size'], shuffle=False, num_workers=3)
 
 

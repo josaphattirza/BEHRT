@@ -1,13 +1,16 @@
 import random
 
 
-def code2index(tokens, token2idx, mask_token=None):
+def code2index(tokens, token2idx, mask_token=None, printSetting = False):
     output_tokens = []
     for i, token in enumerate(tokens):
         if token==mask_token:
             output_tokens.append(token2idx['UNK'])
         else:
             output_tokens.append(token2idx.get(token, token2idx['UNK']))
+    # if printSetting == True:
+    #     print("label tokens",tokens)
+    #     print("label output_tokens", output_tokens)
     return tokens, output_tokens
 
 
@@ -69,7 +72,7 @@ def position_idx(tokens, symbol='SEP'):
     return pos
 
 
-def seq_padding(tokens, max_len, token2idx=None, symbol=None, unkown=True):
+def seq_padding(tokens, max_len, token2idx=None, symbol=None, unkown=True, printSetting = False):
     if symbol is None:
         symbol = 'PAD'
 
@@ -90,4 +93,11 @@ def seq_padding(tokens, max_len, token2idx=None, symbol=None, unkown=True):
                     seq.append(token2idx.get(tokens[i]))
             else:
                 seq.append(token2idx.get(symbol))
+        
+        # if i == 0 and printSetting == True:
+        #     print(seq)
+
+    # if printSetting==True:
+    #     print("seq", seq)
+    #     pass
     return seq

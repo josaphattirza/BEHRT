@@ -56,7 +56,7 @@ class NextVisit(Dataset):
 
         # pad code and label
         code = seq_padding(code, self.max_len, symbol=self.vocab['PAD'])
-        label = seq_padding(label, self.max_len, symbol=-1)
+        label = seq_padding(label, self.max_len, symbol=-1, printSetting = True)
 
         return torch.LongTensor(age), torch.LongTensor(code), torch.LongTensor(position), torch.LongTensor(segment), \
                torch.LongTensor(mask), torch.LongTensor(label), torch.LongTensor([int(patid)])

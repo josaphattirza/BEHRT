@@ -23,7 +23,7 @@ for arr in df['icd_code']:
 token2idx_set = set(token2idx.keys())
 setdiff = icd10set - token2idx_set
 
-print(len(setdiff))
+# print(len(setdiff))
 
 current_idx = max(token2idx.values())
 
@@ -32,7 +32,9 @@ for e in setdiff:
     current_idx += 1
 
 setdiff = icd10set - set(token2idx.keys())
-print(len(setdiff))
+# print(len(setdiff))
+
+print(token2idx['S72092A'])
 
 saved_dict = dict()
 saved_dict['token2idx'] = token2idx
