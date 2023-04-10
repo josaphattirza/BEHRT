@@ -44,7 +44,7 @@ global_params = {
     'batch_size': 64,
     'gradient_accumulation_steps': 1,
     'device': 'cuda:0',
-    'output_dir': 'exp-next-visit',  # output dir
+    'output_dir': 'exp-next-visit-test',  # output dir
     'best_name': 'minvisit3-monthbased-best', # output model name
     'max_len_seq': 64, # originally is 100, ?
     'max_age': 110,
@@ -53,7 +53,9 @@ global_params = {
     'min_visit': 3 # originally is 5
 }
 
+# pretrain_model_path = 'exp-next-visit/minvisit3-monthbased-best'  # pretrained MLM path
 pretrain_model_path = 'exp-model/minvisit3-monthbased-model'  # pretrained MLM path
+
 
 BertVocab = load_obj(file_config['vocab'])
 ageVocab, _ = age_vocab(max_age=global_params['max_age'], symbol=global_params['age_symbol'])
@@ -162,6 +164,7 @@ def precision(logits, label):
     output=sig(logits)
     label, output=label.cpu(), output.detach().cpu()
     tempprc= sklearn.metrics.average_precision_score(label.numpy(),output.numpy(), average='samples')
+    print('tempprc', tempprc)
     return tempprc, output, label
 
 def precision_test(logits, label):
@@ -169,6 +172,7 @@ def precision_test(logits, label):
     output=sig(logits)
     tempprc= sklearn.metrics.average_precision_score(label.numpy(),output.numpy(), average='samples')
     roc = sklearn.metrics.roc_auc_score(label.numpy(),output.numpy(), average='samples')
+    print('roc', roc)
     return tempprc, roc, output, label,
 
 
@@ -208,7 +212,7 @@ def train(e):
         nb_tr_examples += input_ids.size(0)
         nb_tr_steps += 1
         
-        if step % 500==0:
+        if step % 200==0:
             prec, a, b = precision(logits, targets)
             print("epoch: {}\t| Cnt: {}\t| Loss: {}\t| precision: {}".format(e, cnt,temp_loss/500, prec))
             temp_loss = 0
