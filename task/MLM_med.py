@@ -159,8 +159,18 @@ def train(e, loader):
         age_ids, input_ids, posi_ids, segment_ids, attMask, masked_label, \
             med_input_ids, med_posi_ids, med_segments_ids, med_attMask, med_masked_label = batch
         
-        # loss, pred, label = model(input_ids, age_ids, segment_ids, posi_ids,attention_mask=attMask, masked_lm_labels=masked_label)
-        loss, pred, label, = model(input_ids=input_ids, med_input_ids = med_input_ids, age_ids=age_ids, seg_ids=segment_ids, posi_ids=posi_ids,attention_mask=attMask, masked_lm_labels=masked_label)
+        # loss, pred, label = model(input_ids = input_ids, age_ids = age_ids, seg_ids = segment_ids, posi_ids = posi_ids,attention_mask=attMask, masked_lm_labels=masked_label)
+
+        # # # # This causes error
+        loss, pred, label = model(input_ids=input_ids, med_input_ids=med_input_ids, 
+                                age_ids=age_ids, seg_ids=segment_ids, 
+                                posi_ids=posi_ids, attention_mask=attMask, 
+                                masked_lm_labels=masked_label,
+                                med_seg_ids=med_segments_ids,
+                                med_posi_ids=med_posi_ids,
+                                med_attention_mask=med_attMask,
+                                med_masked_lm_labels=med_masked_label,
+                                )
 
         # print('loss', loss)
         # print('pred', pred)
@@ -195,6 +205,7 @@ def train(e, loader):
         
     cost = time.time() - start
     return tr_loss, cost
+
 
 f = open(os.path.join(file_config['model_path'], file_config['file_name']), "w")
 f.write('{}\t{}\t{}\n'.format('epoch', 'loss', 'time'))

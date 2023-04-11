@@ -14,16 +14,11 @@ class BertEmbeddings(nn.Module):
         self.age_embeddings = nn.Embedding(config.age_vocab_size, config.hidden_size)
         self.posi_embeddings = nn.Embedding(config.max_position_embeddings, config.hidden_size). \
             from_pretrained(embeddings=self._init_posi_embedding(config.max_position_embeddings, config.hidden_size))
-        
-        # OWN EMBEDDINGS
-        self.med_embeddings = nn.Embedding(config.med_vocab_size, config.hidden_size)
-        # self.med_posi_embeddings = nn.Embedding(config.max_position_embeddings, config.hidden_size). \
-        #     from_pretrained(embeddings=self._init_posi_embedding(config.max_position_embeddings, config.hidden_size))
 
         self.LayerNorm = Bert.modeling.BertLayerNorm(config.hidden_size, eps=1e-12)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
-    def forward(self, word_ids, med_word_ids, age_ids=None, seg_ids=None, posi_ids=None, age=True):
+    def forward(self, word_ids, age_ids=None, seg_ids=None, posi_ids=None, age=True):
         if seg_ids is None:
             seg_ids = torch.zeros_like(word_ids)
         if age_ids is None:
@@ -32,17 +27,15 @@ class BertEmbeddings(nn.Module):
             posi_ids = torch.zeros_like(word_ids)
 
         word_embed = self.word_embeddings(word_ids)
-        med_word_embed = self.med_embeddings(med_word_ids)
-
         # put breakpoint here to check embeddings compared to 'max(word_ids.reshape(-1))' in debug console
         segment_embed = self.segment_embeddings(seg_ids)
         age_embed = self.age_embeddings(age_ids)
         posi_embeddings = self.posi_embeddings(posi_ids)
 
         if age:
-            embeddings = word_embed + med_word_embed + segment_embed + age_embed + posi_embeddings
+            embeddings = word_embed + segment_embed + age_embed + posi_embeddings
         else:
-            embeddings = word_embed + med_word_embed + segment_embed + posi_embeddings
+            embeddings = word_embed + segment_embed + posi_embeddings
         embeddings = self.LayerNorm(embeddings)
         embeddings = self.dropout(embeddings)
         return embeddings
@@ -78,7 +71,7 @@ class BertModel(Bert.modeling.BertPreTrainedModel):
         self.pooler = Bert.modeling.BertPooler(config)
         self.apply(self.init_bert_weights)
 
-    def forward(self, input_ids, med_input_ids, age_ids=None, seg_ids=None, posi_ids=None, attention_mask=None,
+    def forward(self, input_ids, age_ids=None, seg_ids=None, posi_ids=None, attention_mask=None,
                 output_all_encoded_layers=True):
         if attention_mask is None:
             attention_mask = torch.ones_like(input_ids)
@@ -104,7 +97,7 @@ class BertModel(Bert.modeling.BertPreTrainedModel):
         extended_attention_mask = extended_attention_mask.to(dtype=next(self.parameters()).dtype)  # fp16 compatibility
         extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
 
-        embedding_output = self.embeddings(input_ids, med_input_ids, age_ids, seg_ids, posi_ids)
+        embedding_output = self.embeddings(input_ids, age_ids, seg_ids, posi_ids)
         encoded_layers = self.encoder(embedding_output,
                                       extended_attention_mask,
                                       output_all_encoded_layers=output_all_encoded_layers)
@@ -113,6 +106,7 @@ class BertModel(Bert.modeling.BertPreTrainedModel):
         if not output_all_encoded_layers:
             encoded_layers = encoded_layers[-1]
         return encoded_layers, pooled_output
+
 
 
 class BertForMaskedLM(Bert.modeling.BertPreTrainedModel):
@@ -150,10 +144,10 @@ class BertForMaskedLM(Bert.modeling.BertPreTrainedModel):
             masked_lm_loss = loss_fct(pred, label)
             
             # # OWN EMBEDDINGS
-            # THIS CREATES ERROR 
-            med_pred = med_prediction_scores.view(-1, self.config.med_vocab_size)
-            med_label = med_masked_lm_labels.view(-1)
-            med_masked_lm_loss = loss_fct(med_pred, med_label)
+            # # This causes error
+            # med_pred = med_prediction_scores.view(-1, self.config.med_vocab_size)
+            # med_label = med_masked_lm_labels.view(-1)
+            # med_masked_lm_loss = loss_fct(med_pred, med_label)
 
             # w1 = 0.5
             # w2 = 0.5

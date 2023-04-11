@@ -151,7 +151,7 @@ def train(e, loader):
         batch = tuple(t.to(train_params['device']) for t in batch)
         age_ids, input_ids, posi_ids, segment_ids, attMask, masked_label = batch
         # print(input_ids)
-        loss, pred, label = model(input_ids, age_ids, segment_ids, posi_ids,attention_mask=attMask, masked_lm_labels=masked_label)
+        loss, pred, label = model(input_ids = input_ids, age_ids = age_ids, seg_ids = segment_ids, posi_ids = posi_ids,attention_mask=attMask, masked_lm_labels=masked_label)
         if global_params['gradient_accumulation_steps'] >1:
             loss = loss/global_params['gradient_accumulation_steps']
         loss.backward()
