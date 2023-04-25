@@ -60,8 +60,8 @@ file_config = {
     'vocab':'token2idx-added',  # vocabulary idx2token, token2idx
     'data': './behrt_format_mimic4ed_month_based',  # formated data 
     'model_path': 'exp-model', # where to save model
-    'model_name': 'minvisit3-monthbased-model', # model name
-    'file_name': 'minvisit3-monthbased-log',  # log path
+    'model_name': 'minvisit3-monthbased-model2', # model name
+    'file_name': 'minvisit3-monthbased-log2',  # log path
 }
 create_folder(file_config['model_path'])
 
@@ -134,7 +134,7 @@ def cal_acc(label, pred):
     truepred = pred.detach().cpu().numpy()
     truepred = truepred[ind]
     truelabel = label[ind]
-    truepred = logs(torch.tensor(truepred))
+    truepred = logs(torch.tensor(truepred).log_softmax(dim=1))
     outs = [np.argmax(pred_x) for pred_x in truepred.numpy()]
     precision = skm.precision_score(truelabel, outs, average='micro')
     return precision

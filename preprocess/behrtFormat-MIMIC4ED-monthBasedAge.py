@@ -35,6 +35,12 @@ df_pat = pd.read_csv('/home/josaphat/Desktop/research/mimic-iv-2.1/hosp/patients
 df_edstays = pd.read_csv('/home/josaphat/Desktop/research/mimic-iv-ed-2.0/2.0/ed/edstays.csv')
 df_eddiagnosis = pd.read_csv('/home/josaphat/Desktop/research/mimic-iv-ed-2.0/2.0/ed/diagnosis.csv')
 
+# # For testing purposes
+# df_adm = df_adm.head(100)
+# df_pat = df_pat.head(100)
+# df_edstays = df_edstays.head(100)
+# df_eddiagnosis = df_eddiagnosis.head(100)
+
 # taking relevant columns from MIMIC-IV-ED
 df_edstays = df_edstays[['subject_id','hadm_id','stay_id','intime','outtime','arrival_transport','disposition']]
 
@@ -67,7 +73,7 @@ df_main = df_main.merge(df_edstays, how='inner', on = ['subject_id','hadm_id'])
 df_main['age_on_admittance'] = df_main.apply(lambda x: calculate_age_on_current_admission_month_based(x['admittime'],x['anchor_time'],x['anchor_age']), axis=1)
 
 # merge ED admission with ED diagnosis on same patient_id and admission_id
-df_main = df_main.merge(df_eddiagnosis, how='inner', on=['subject_id','stay_id'])
+df_main = df_main.merge(df_eddiagnosis, how='outer', on=['subject_id','stay_id'])
 df_main2 = df_main[['subject_id','intime','age_on_admittance','icd_code']]
 
 # transform dataframe into spark due to unavailable method on normal pandas
@@ -78,12 +84,8 @@ sparkDF = sparkDF.groupBy(['subject_id','intime']).agg(F.collect_list('age_on_ad
 
 print(sparkDF.head())
 
-config= {
-    'diagnoses': '',  # data path for diagnoses/medication
-    'demographic': '',  # data path for demographic information
-    'output': '',  # path to save formated file
-    'col_name': ''  # column name for ICD/Med code
-}
+
+
 
 df_main = sparkDF.toPandas()
 

@@ -84,9 +84,9 @@ optim_param = {
 
 train_params = {
     'batch_size': 32, # original is 256
-    'use_cuda': False,
+    'use_cuda': True,
     'max_len_seq': global_params['max_seq_len'],
-    'device': 'cpu'
+    'device': 'cuda:0'
 }
 
 BertVocab = load_obj(file_config['vocab'])
@@ -95,8 +95,8 @@ ageVocab, _ = age_vocab(max_age=global_params['max_age'], mon=global_params['mon
 # print(ageVocab)
 
 data = pd.read_parquet(file_config['data'])
-# remove patients with visits less than min visit
 # print(data)
+# remove patients with visits less than min visit
 data['length'] = data['icd_code'].apply(lambda x: len([i for i in range(len(x)) if x[i] == 'SEP']))
 data = data[data['length'] >= global_params['min_visit']]
 data = data.reset_index(drop=True)
@@ -108,7 +108,7 @@ trainload = DataLoader(dataset=Dset, batch_size=train_params['batch_size'], shuf
 
 model_config = {
     'vocab_size': len(BertVocab['token2idx'].keys()), # number of disease + symbols for word embedding
-    'med_vocab_size': len(med_BertVocab['token2idx'].keys()), # OWN EMBEDDINGS
+    'med_vocab_size': len(med_BertVocab['med2idx'].keys()), # OWN EMBEDDINGS
 
     'hidden_size': 288, # word embedding and seg embedding hidden size
     'seg_vocab_size': 2, # number of vocab for seg embedding
@@ -139,7 +139,7 @@ def cal_acc(label, pred):
     truepred = pred.detach().cpu().numpy()
     truepred = truepred[ind]
     truelabel = label[ind]
-    truepred = logs(torch.tensor(truepred))
+    truepred = logs(torch.tensor(truepred).log_softmax(dim=1))
     outs = [np.argmax(pred_x) for pred_x in truepred.numpy()]
     precision = skm.precision_score(truelabel, outs, average='micro')
     return precision
@@ -161,8 +161,7 @@ def train(e, loader):
         
         # loss, pred, label = model(input_ids = input_ids, age_ids = age_ids, seg_ids = segment_ids, posi_ids = posi_ids,attention_mask=attMask, masked_lm_labels=masked_label)
 
-        # # # # This causes error
-        loss, pred, label = model(input_ids=input_ids, med_input_ids=med_input_ids, 
+        loss, pred, label, med_pred, med_label = model(input_ids=input_ids, med_input_ids=med_input_ids, 
                                 age_ids=age_ids, seg_ids=segment_ids, 
                                 posi_ids=posi_ids, attention_mask=attMask, 
                                 masked_lm_labels=masked_label,
@@ -187,7 +186,8 @@ def train(e, loader):
         nb_tr_steps += 1
         
         if step % 200==0:
-            print("epoch: {}\t| cnt: {}\t|Loss: {}\t| precision: {:.4f}\t| time: {:.2f}".format(e, cnt, temp_loss/2000, cal_acc(label, pred), time.time()-start))
+            final_precision = (cal_acc(label,pred)+cal_acc(med_label, med_pred))/2
+            print("epoch: {}\t| cnt: {}\t|Loss: {}\t| precision: {:.4f}\t| time: {:.2f}".format(e, cnt, temp_loss/2000, final_precision, time.time()-start))
             temp_loss = 0
             start = time.time()
             

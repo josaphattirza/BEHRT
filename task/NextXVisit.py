@@ -172,7 +172,7 @@ def precision_test(logits, label):
     output=sig(logits)
     tempprc= sklearn.metrics.average_precision_score(label.numpy(),output.numpy(), average='samples')
     roc = sklearn.metrics.roc_auc_score(label.numpy(),output.numpy(), average='samples')
-    print('roc', roc)
+    print('auroc', roc)
     return tempprc, roc, output, label,
 
 

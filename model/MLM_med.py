@@ -72,7 +72,7 @@ class BertModel(Bert.modeling.BertPreTrainedModel):
         self.apply(self.init_bert_weights)
 
     def forward(self, input_ids, age_ids=None, seg_ids=None, posi_ids=None, attention_mask=None,
-                output_all_encoded_layers=True):
+                output_all_encoded_layers=True, age = True):
         if attention_mask is None:
             attention_mask = torch.ones_like(input_ids)
         if age_ids is None:
@@ -97,7 +97,7 @@ class BertModel(Bert.modeling.BertPreTrainedModel):
         extended_attention_mask = extended_attention_mask.to(dtype=next(self.parameters()).dtype)  # fp16 compatibility
         extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
 
-        embedding_output = self.embeddings(input_ids, age_ids, seg_ids, posi_ids)
+        embedding_output = self.embeddings(input_ids, age_ids, seg_ids, posi_ids, age=age)
         encoded_layers = self.encoder(embedding_output,
                                       extended_attention_mask,
                                       output_all_encoded_layers=output_all_encoded_layers)
@@ -106,7 +106,6 @@ class BertModel(Bert.modeling.BertPreTrainedModel):
         if not output_all_encoded_layers:
             encoded_layers = encoded_layers[-1]
         return encoded_layers, pooled_output
-
 
 
 class BertForMaskedLM(Bert.modeling.BertPreTrainedModel):
@@ -121,11 +120,11 @@ class BertForMaskedLM(Bert.modeling.BertPreTrainedModel):
                 med_seg_ids = None, med_posi_ids=None, med_attention_mask = None, med_masked_lm_labels=None,
                 ):
         sequence_output, _ = self.bert(input_ids, age_ids, seg_ids, posi_ids, attention_mask,
-                                       output_all_encoded_layers=False)
+                                       output_all_encoded_layers=False, age = True)
         
         # OWN EMBEDDINGS
         med_sequence_output, _ = self.bert(med_input_ids, age_ids, med_seg_ids, med_posi_ids, med_attention_mask,
-                                       output_all_encoded_layers=False)
+                                       output_all_encoded_layers=False, age = False)
         
 
         prediction_scores = self.cls(sequence_output)
@@ -143,18 +142,17 @@ class BertForMaskedLM(Bert.modeling.BertPreTrainedModel):
             label = masked_lm_labels.view(-1)
             masked_lm_loss = loss_fct(pred, label)
             
-            # # OWN EMBEDDINGS
-            # # This causes error
-            # med_pred = med_prediction_scores.view(-1, self.config.med_vocab_size)
-            # med_label = med_masked_lm_labels.view(-1)
-            # med_masked_lm_loss = loss_fct(med_pred, med_label)
+            # OWN EMBEDDINGS
+            med_pred = med_prediction_scores.view(-1, self.config.med_vocab_size)
+            med_label = med_masked_lm_labels.view(-1)
+            med_masked_lm_loss = loss_fct(med_pred, med_label)
 
-            # w1 = 0.5
-            # w2 = 0.5
-            # loss = w1 * masked_lm_loss + w2 * med_masked_lm_loss
+            w1 = 0.5
+            w2 = 0.5
+            loss = w1 * masked_lm_loss + w2 * med_masked_lm_loss
 
-            # return loss, pred, label, med_pred, med_label
+            return loss, pred, label, med_pred, med_label
 
-            return masked_lm_loss, pred, label
+            # return masked_lm_loss, pred, label
         else:
             return prediction_scores
