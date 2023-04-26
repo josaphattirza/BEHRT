@@ -1,5 +1,5 @@
 import pandas as pd
 
-data = pd.read_parquet('./behrt_med_format_mimic4ed_month_based')
+data = pd.read_parquet('./behrt_format_mimic4ed_month_based')
 
 print(data)
