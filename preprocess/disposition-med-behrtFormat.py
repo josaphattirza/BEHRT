@@ -25,134 +25,35 @@ def calculate_age_on_current_admission_month_based(admission_date,anchor_time,an
     age = relativedelta(admission_date, anchor_time).months + anchor_age*12
     return age
 
-
-# def handle_arrays(array1, array2, age_on_admittance,):
-#     sublists1 = []
-#     sublists2 = []
-#     age_sublists = []
-#     disposition_sublists = []
-#     temp = []
-
-#     age_set = []
-#     age_set_counter = 0
-
-#     disposition_set = []
-
-
-#     for item in age_on_admittance:
-#         if item not in age_set:
-#             age_set.append(item)
-
-
-#     final_result1 = []
-#     final_result2 = []
-#     age_final_result = []
-
-
-#     for item in array1:
-#         if item == "SEP":
-#             sublists1.append(temp)
-#             temp = []
-#         else:
-#             temp.append(item)
-
-#     if temp:
-#         sublists1.append(temp)
-
-#     for item in array2:
-#         if item == "SEP":
-#             sublists2.append(temp)
-#             temp = []
-#         else:
-#             temp.append(item)
-#     if temp:
-#         sublists2.append(temp)
-
-#     # The amount of SEP in disease and med is the same
-#     if len(sublists1) == len(sublists2):
-#         for a,b in zip(sublists1,sublists2):
-#             if len(a) > len(b):
-#                 diff = len(a) - len(b)
-#                 for _ in range(diff):
-#                     b.append('UNK')
-#             if len(b) > len(a):
-#                 diff = len(b) - len(a)
-#                 for _ in range(diff):
-#                     a.append('UNK')
-            
-#             age_temp = [age_set[min(age_set_counter,len(age_set)-1)] for _ in range(len(a))]
-#             age_set_counter += 1
-#             age_sublists.append(age_temp)
-
-#     elif len(sublists1) > len(sublists2):
-#         for _ in range(len(array1)-len(array2)):
-#             sublists2[-1].append('UNK')
-#         sublists2[-1].append('SEP')
-
-#         for i in sublists1:
-#             age_temp = [age_set[min(age_set_counter,len(age_set)-1)] for _ in range(len(i))]
-#             age_set_counter += 1
-#             age_sublists.append(age_temp)
-
-#     elif len(sublists2) > len(sublists1):
-#         for _ in range(len(array2)-len(array1)):
-#             sublists1[-1].append('UNK')
-#         sublists1[-1].append('SEP')
-
-#         for i in sublists2:
-#             age_temp = [age_set[min(age_set_counter,len(age_set)-1)] for _ in range(len(i))]
-#             age_set_counter += 1
-#             age_sublists.append(age_temp)
-
-                
-#     for sublist in sublists1:
-#         final_result1.extend(sublist)
-#         final_result1.append('SEP')
-
-#     for sublist in sublists2:
-#         final_result2.extend(sublist)
-#         final_result2.append('SEP')
-
-#     for sublist in age_sublists:
-#         age_final_result.extend(sublist)
-#         # age_final_result.append(age_set[min(age_set_counter,len(age_set)-1)])
-
-#         # TRY TO RUN THIS LINE
-#         age_final_result.append(sublist[-1])
-
-
-#     while(len(age_final_result) < len(final_result1)):
-#         age_final_result.append(age_set[min(age_set_counter,len(age_set)-1)])
-
-
-#     if(len(final_result1)!=len(final_result1)!=len(age_final_result)):
-#         print('NOT SAME LENGTH')
-#         print(array1)
-#         print(array2)
-#         print(final_result1)
-#         print(final_result2)
-
-#     return final_result1, final_result2, age_final_result
-
-
-# TODO : use the same logic of age with disposition
-def handle_arrays(array1, array2, age_on_admittance,):
-    sublists1 = []
-    sublists2 = []
+# GOAL: To ensure that code, med, age_on_admittance, and disposition all has the same length
+# NOTE:
+# initial length:
+# code = age
+# med = disposition
+# NOTE 2:
+# CASE 1 : both code and medicine has same amount of visit (same amount of SEP)
+# CASE 2 : code has more visit (more SEP)
+# CASE 3 : med has more visit (more SEP)
+def handle_arrays(icd_code, medicine, age_on_admittance,disposition):
+    code_sublists = []
+    med_sublists = []
     age_sublists = []
+    disposition_sublists = []
     temp = []
     temp_age = []
+    temp_disposition = []
 
 
 
-    final_result1 = []
-    final_result2 = []
+    code_final_result = []
+    med_final_result = []
     age_final_result = []
+    disposition_final_result = []
 
 
-    for item, age in zip(array1,age_on_admittance):
+    for item, age in zip(icd_code,age_on_admittance):
         if item == "SEP":
-            sublists1.append(temp)
+            code_sublists.append(temp)
             age_sublists.append(temp_age)
             temp = []
             temp_age = []
@@ -160,78 +61,96 @@ def handle_arrays(array1, array2, age_on_admittance,):
             temp.append(item)
             temp_age.append(age)
     if temp:
-        sublists1.append(temp)
+        code_sublists.append(temp)
         age_sublists.append(temp_age)
 
-    for item in array2:
+    for item,disp in zip(medicine,disposition):
         if item == "SEP":
-            sublists2.append(temp)
+            med_sublists.append(temp)
+            disposition_sublists.append(temp_disposition)
             temp = []
+            temp_disposition = []
         else:
             temp.append(item)
+            temp_disposition.append(disp)
     if temp:
-        sublists2.append(temp)
+        med_sublists.append(temp)
+        disposition_sublists.append(temp_disposition)
 
-    # print(len(age_sublists))
-
-    if len(sublists1) == len(sublists2):
-        for a,b,c in zip(sublists1,sublists2, age_sublists):
-            if len(a) > len(b):
-                diff = len(a) - len(b)
-                for _ in range(diff):
-                    b.append('UNK')
-                    c.append(c[0])
-            if len(b) > len(a):
-                diff = len(b) - len(a)
-                for _ in range(diff):
-                    a.append('UNK')
-                    c.append(c[0])
-            
-
-    elif len(sublists1) > len(sublists2):
-        for _ in range(len(array1)-len(array2)):
-            sublists2[-1].append('UNK')
-
-        for a,b in zip(sublists1,age_sublists):
-            while (len(a)>len(b)):
-                b.append(b[0])
-
-        sublists2[-1].append('SEP')
-
-
-    elif len(sublists2) > len(sublists1):
-        for _ in range(len(array2)-len(array1)):
-            sublists1[-1].append('UNK')
-
-        for a,b in zip(sublists2,age_sublists):
-            while (len(a)>len(b)):
-                b.append(b[0])
-
-
-        sublists1[-1].append('SEP')
-
+    for a,b,c,d in zip(code_sublists,med_sublists, age_sublists, disposition_sublists):
+        if len(a) > len(b):
+            diff = len(a) - len(b)
+            for _ in range(diff):
+                b.append('UNK')
+                # c.append(c[0])
+                d.append(d[0])
+        if len(b) > len(a):
+            diff = len(b) - len(a)
+            for _ in range(diff):
+                a.append('UNK')
+                c.append(c[0])
+                # d.append(d[0])
 
                 
-    for sublist in sublists1:
-        final_result1.extend(sublist)
-        final_result1.append('SEP')
+    for sublist in code_sublists:
+        code_final_result.extend(sublist)
+        code_final_result.append('SEP')
 
-    for sublist in sublists2:
-        final_result2.extend(sublist)
-        final_result2.append('SEP')
+    for sublist in med_sublists:
+        med_final_result.extend(sublist)
+        med_final_result.append('SEP')
 
     for sublist in age_sublists:
         age_final_result.extend(sublist)
         age_final_result.append(sublist[0])
 
-    if(len(final_result1)!=len(final_result1)!=len(age_final_result)):
-        print('NOT SAME LENGTH')
-        print(array1)
-        print(array2)
-        print(final_result1)
-        print(final_result2)
+    for sublist in disposition_sublists:
+        disposition_final_result.extend(sublist)
+        disposition_final_result.append(sublist[0])
 
-    return final_result1, final_result2, age_final_result
+
+    if len(code_final_result) > len(med_final_result):
+        # print("CASE 2")
+        for _ in range(len(code_final_result)-len(med_final_result)-1):
+            med_final_result.append('UNK')
+            disposition_final_result.append(disposition_final_result[-1])
+
+        med_final_result.append('SEP')
+        disposition_final_result.append(disposition_final_result[-1])
+
+
+    elif len(med_final_result) > len(code_final_result):
+        # print("CASE 3")
+        for _ in range(len(med_final_result)-len(code_final_result)-1):
+            code_final_result.append('UNK')
+            age_final_result.append(age_final_result[-1])
+
+        code_final_result.append('SEP')
+        age_final_result.append(age_final_result[-1])
+
+        
+    else:  
+        # print("CASE 1")
+        pass
+
+    # print(len(final_result1))
+    # print(len(final_result2))
+    # print(len(age_final_result))
+    # print(len(disposition_final_result))
+    # print("=======")
+
+
+    if(len(code_final_result)==len(med_final_result)==len(age_final_result)==len(disposition_final_result)):
+        # print("ALL HAS SAME LENGTH")
+        pass
+    else:
+        print('NOT SAME LENGTH')
+        print(icd_code)
+        print(medicine)
+        print(code_final_result)
+        print(med_final_result)
+
+    return code_final_result, med_final_result, age_final_result, disposition
 
 
 
@@ -246,12 +165,12 @@ df_eddiagnosis = pd.read_csv('/home/josaphat/Desktop/research/mimic-iv-ed-2.0/2.
 # load ED-PYXIS 
 df_pyxis = pd.read_csv('/home/josaphat/Desktop/research/mimic-iv-ed-2.0/2.0/ed/pyxis.csv')
 
-# For testing purposes
-df_adm = df_adm.head(100)
-df_pat = df_pat.head(100)
-df_edstays = df_edstays.head(100)
-df_eddiagnosis = df_eddiagnosis.head(100)
-df_pyxis = df_pyxis.head(100)
+# # For testing purposes
+# df_adm = df_adm.head(100)
+# df_pat = df_pat.head(100)
+# df_edstays = df_edstays.head(100)
+# df_eddiagnosis = df_eddiagnosis.head(100)
+# df_pyxis = df_pyxis.head(100)
 
 # taking relevant columns from MIMIC-IV-ED
 df_edstays = df_edstays[['subject_id','hadm_id','stay_id','intime','outtime','arrival_transport','disposition']]
@@ -411,8 +330,17 @@ df = med_sparkDF.join(diagnosis_sparkDF, on='subject_id')
 # Define the UDF
 udf_handle_arrays = udf(handle_arrays, returnType=ArrayType(ArrayType(StringType())))
 
-df = df.select("subject_id", udf_handle_arrays("icd_code", "med", "age_on_admittance",).alias("result"))
-df = df.select("subject_id", df.result.getItem(0).alias("icd_code"), df.result.getItem(1).alias("med"), df.result.getItem(2).alias("age_on_admittance"))
+df = df.select("subject_id", udf_handle_arrays("icd_code", 
+                                               "med", 
+                                               "age_on_admittance",
+                                               "disposition",
+                                               ).alias("result"))
+df = df.select("subject_id", 
+               df.result.getItem(0).alias("icd_code"), 
+               df.result.getItem(1).alias("med"), 
+               df.result.getItem(2).alias("age_on_admittance"),
+               df.result.getItem(3).alias("disposition"),
+               )
 
 # diagnoses = EHR(diagnoses).array_flatten(config['col_name']).array_flatten('age')
 # diagnoses.write.parquet(config['output'])
@@ -420,4 +348,4 @@ df = df.select("subject_id", df.result.getItem(0).alias("icd_code"), df.result.g
 # print(sparkDF)
 df.show()
 
-df.write.parquet('behrt_med_format_mimic4ed_month_based')
+df.write.parquet('behrt+disposition+med_month_based')
