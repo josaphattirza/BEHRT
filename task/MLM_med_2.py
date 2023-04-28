@@ -59,10 +59,10 @@ class TrainConfig(object):
 file_config = {
     'vocab':'token2idx-added',  # vocabulary idx2token, token2idx
     'med_vocab' : 'med2idx', 
-    'data': './behrt_med_format_mimic4ed_month_based/',  # formated data 
+    'data': './behrt_disposition_med_month_based/',  # formated data 
     'model_path': 'med-MLM', # where to save model
-    'model_name': 'med-MLM-minvisit3-monthbased', # model name
-    'file_name': 'med-MLM-minvisit3-monthbased-log',  # log path
+    'model_name': 'med-fixed-MLM-minvisit3-monthbased', # model name
+    'file_name': 'med-fixed-MLM-minvisit3-monthbased-log',  # log path
 }
 create_folder(file_config['model_path'])
 
