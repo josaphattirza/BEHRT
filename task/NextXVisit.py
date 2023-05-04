@@ -172,6 +172,7 @@ def precision_test(logits, label):
     output=sig(logits)
     tempprc= sklearn.metrics.average_precision_score(label.numpy(),output.numpy(), average='samples')
     roc = sklearn.metrics.roc_auc_score(label.numpy(),output.numpy(), average='samples')
+    
     print('auroc', roc)
     return tempprc, roc, output, label,
 
@@ -253,8 +254,25 @@ def evaluation():
     y_label = torch.cat(y_label, dim=0)
     y = torch.cat(y, dim=0)
 
+    # # Convert logits and targets to binary labels
+    # y_binary = (y.detach().numpy() > 0.01).astype(int)
+    # y_label_binary = y_label.detach().numpy()
+
+    # # Convert binary labels to human-readable form
+    # logits_labels = mlb.inverse_transform(y_binary)
+    # targets_labels = mlb.inverse_transform(y_label_binary)
+
+    # # Print out logits and targets
+    # for i in range(len(logits_labels)):
+    #     print(f"Input {i}:")
+    #     print(f"Logits: {logits_labels[i]}")
+    #     print(f"Targets: {targets_labels[i]}\n")
+
+
     aps, roc, output, label = precision_test(y, y_label)
+    
     return aps, roc, tr_loss
+
 
 
 

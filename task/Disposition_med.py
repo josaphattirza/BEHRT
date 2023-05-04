@@ -1,4 +1,5 @@
-import sys 
+import sys
+from matplotlib import pyplot as plt 
 
 sys.path.append('/home/josaphat/Desktop/research/BEHRT')
 
@@ -31,8 +32,8 @@ warnings.filterwarnings(action='ignore')
 file_config = {
     'vocab':'token2idx-added',  # vocab token2idx idx2token
     'med_vocab' : 'med2idx', 
-    'train': './behrt_disposition_med_month_based_train/',
-    'test': './behrt_disposition_med_month_based_test/',
+    'train': './behrt_fixed_disposition_med_month_based_train/',
+    'test': './behrt_fixed_disposition_med_month_based_test/',
 }
 
 optim_config = {
@@ -181,6 +182,17 @@ def precision_test(logits, label):
     tempprc= sklearn.metrics.average_precision_score(label.numpy(),output.numpy(), average='samples')
     roc = sklearn.metrics.roc_auc_score(label.numpy(),output.numpy(), average='samples')
     print('auroc', roc)
+
+    sig = nn.Sigmoid()
+    output = sig(logits).numpy()
+
+    fpr, tpr, thresholds = sklearn.metrics.roc_curve(label.numpy().ravel(), output.ravel())
+    plt.plot(fpr, tpr)
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC Curve')
+    plt.show()
+
     return tempprc, roc, output, label,
 
 
@@ -272,8 +284,24 @@ def evaluation():
         y_label.append(targets)
         y.append(logits)
 
+
     y_label = torch.cat(y_label, dim=0)
     y = torch.cat(y, dim=0)
+
+    # Convert logits and targets to binary labels
+    y_binary = (y.detach().numpy() > 0.5).astype(int)
+    y_label_binary = y_label.detach().numpy()
+
+    # Convert binary labels to human-readable form
+    logits_labels = mlb.inverse_transform(y_binary)
+    targets_labels = mlb.inverse_transform(y_label_binary)
+
+    # Print out logits and targets
+    for i in range(len(logits_labels)):
+        print(f"Input {i}:")
+        print(f"Logits: {logits_labels[i]}")
+        print(f"Targets: {targets_labels[i]}\n")
+
 
     aps, roc, output, label = precision_test(y, y_label)
     return aps, roc, tr_loss

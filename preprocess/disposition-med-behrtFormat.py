@@ -149,8 +149,10 @@ def handle_arrays(icd_code, medicine, age_on_admittance,disposition):
         print(medicine)
         print(code_final_result)
         print(med_final_result)
+        print(age_final_result)
+        print(disposition_final_result)
 
-    return code_final_result, med_final_result, age_final_result, disposition
+    return code_final_result, med_final_result, age_final_result, disposition_final_result
 
 
 
@@ -348,4 +350,4 @@ df = df.select("subject_id",
 # print(sparkDF)
 df.show()
 
-df.write.parquet('behrt+disposition+med_month_based')
+df.write.parquet('behrt_disposition_med_month_based')

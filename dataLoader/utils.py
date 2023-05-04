@@ -72,7 +72,7 @@ def position_idx(tokens, symbol='SEP'):
     return pos
 
 
-def seq_padding(tokens, max_len, token2idx=None, symbol=None, unkown=True, printSetting = False):
+def seq_padding(tokens, max_len, token2idx=None, symbol=None, unkown=True):
     if symbol is None:
         symbol = 'PAD'
 
@@ -93,11 +93,5 @@ def seq_padding(tokens, max_len, token2idx=None, symbol=None, unkown=True, print
                     seq.append(token2idx.get(tokens[i]))
             else:
                 seq.append(token2idx.get(symbol))
-        
-        # if i == 0 and printSetting == True:
-        #     print(seq)
 
-    # if printSetting==True:
-    #     print("seq", seq)
-    #     pass
     return seq

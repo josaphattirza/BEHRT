@@ -152,6 +152,8 @@ class BertForMultiLabelPrediction(Bert.modeling.BertPreTrainedModel):
         if labels is not None:
             loss_fct = nn.MultiLabelSoftMarginLoss()
             loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1, self.num_labels))
+            # print("logits",logits)
+            # print("labels",labels)
             return loss, logits
         else:
             return logits
