@@ -186,12 +186,12 @@ def precision_test(logits, label):
     sig = nn.Sigmoid()
     output = sig(logits).numpy()
 
-    fpr, tpr, thresholds = sklearn.metrics.roc_curve(label.numpy().ravel(), output.ravel())
-    plt.plot(fpr, tpr)
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('ROC Curve')
-    plt.show()
+    # fpr, tpr, thresholds = sklearn.metrics.roc_curve(label.numpy().ravel(), output.ravel())
+    # plt.plot(fpr, tpr)
+    # plt.xlabel('False Positive Rate')
+    # plt.ylabel('True Positive Rate')
+    # plt.title('ROC Curve')
+    # plt.show()
 
     return tempprc, roc, output, label,
 
@@ -296,11 +296,11 @@ def evaluation():
     logits_labels = mlb.inverse_transform(y_binary)
     targets_labels = mlb.inverse_transform(y_label_binary)
 
-    # Print out logits and targets
-    for i in range(len(logits_labels)):
-        print(f"Input {i}:")
-        print(f"Logits: {logits_labels[i]}")
-        print(f"Targets: {targets_labels[i]}\n")
+    # # Print out logits and targets
+    # for i in range(len(logits_labels)):
+    #     print(f"Input {i}:")
+    #     print(f"Logits: {logits_labels[i]}")
+    #     print(f"Targets: {targets_labels[i]}\n")
 
 
     aps, roc, output, label = precision_test(y, y_label)

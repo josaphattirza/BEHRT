@@ -1,5 +1,7 @@
 import pickle
 
+import numpy as np
+
 triage2idx = {}
 
 indexCount = 0
@@ -14,8 +16,11 @@ for key in reservedKey:
 with open('./triage_categories.pkl','rb') as f:
     triage_categories_list = pickle.load(f)
 
+triage_categories_list = np.concatenate(triage_categories_list)
+
 triage_set = set(triage_categories_list)
 triage_set.remove('UNK')
+triage_set.remove('SEP')
 
 
 print(triage_set)

@@ -14,11 +14,11 @@ from pyspark.sql.functions import udf
 from pyspark.sql.types import ArrayType, StringType
 
 
-#Create PySpark SparkSession
-spark = SparkSession.builder \
-    .master("local[1]") \
-    .appName("SparkApp") \
-    .getOrCreate()
+# #Create PySpark SparkSession
+# spark = SparkSession.builder \
+#     .master("local[1]") \
+#     .appName("SparkApp") \
+#     .getOrCreate()
 
 
 def calculate_age_on_current_admission_month_based(admission_date,anchor_time,anchor_age):

@@ -52,12 +52,12 @@ df_edstays.intime = pd.to_datetime(df_edstays.intime, format = '%Y-%m-%d %H:%M:%
 df_edstays.outtime = pd.to_datetime(df_edstays.outtime, format = '%Y-%m-%d %H:%M:%S', errors='coerce')
 df_adm = df_adm.sort_values(['subject_id', 'admittime'])
 
-# merge admission info with patient demographics info
-df_adm = df_adm.merge(df_pat, how='inner', on='subject_id')
+
+df_edstays = df_edstays.merge(df_pat, how='inner', on='subject_id')
 
 # taking relevant columns, save it as Main Dataframe
 df_main = df_adm[['subject_id','hadm_id',
-'admittime','dischtime','deathtime','anchor_age']]
+'admittime','dischtime','deathtime']]
 
 # find the first time patient is admitted to the hospital, save it in anchor_time
 anchor_time = df_main.groupby('subject_id')['admittime'].min().reset_index()
@@ -65,15 +65,33 @@ anchor_time = anchor_time.rename(columns={'admittime':'anchor_time'})
 df_main = df_main.merge(anchor_time, how='left', on='subject_id')
 
 # merge patient info from MIMIC-IV with MIMIC-IV-ED edstays on same ID
-df_main = df_main.merge(df_edstays, how='inner', on = ['subject_id','hadm_id'])
+df_main = df_main.merge(df_edstays, how='outer', on = ['subject_id','hadm_id'])
+
+
+## FIXED PART
+## Fill all anchor_time if we can find anchor_time is available
+## Sometimes patient can have previous visits in adm,
+## but during their ed visit, they dont have hadm_id
+## making us unable to trace patient's anchor_time
+
+## Sort the DataFrame by subject_id and anchor_time
+df_main.sort_values(['subject_id', 'anchor_time'], inplace=True)
+# Forward fill NaN values in anchor_time column within each subject_id group
+df_main['anchor_time'].fillna(method='ffill', inplace=True)
+# Remove rows with NaN values in stay_id column, 
+# Since we don't need rows not from ED stays anyway
+df_main.dropna(subset=['stay_id'], inplace=True)
+
 
 # calculate patient age during admission
-### admittime = date on admission
+### intime = date on incoming to ED
 ### anchor_time = date when anchor_age is given
-df_main['age_on_admittance'] = df_main.apply(lambda x: calculate_age_on_current_admission_month_based(x['admittime'],x['anchor_time'],x['anchor_age']), axis=1)
+df_main['age_on_admittance'] = df_main.apply(lambda x: calculate_age_on_current_admission_month_based(x['intime'],x['anchor_time'],x['anchor_age']), axis=1)
 
 # merge ED admission with ED diagnosis on same patient_id and admission_id
 df_main = df_main.merge(df_eddiagnosis, how='inner', on=['subject_id','stay_id'])
+# Sort the DataFrame by subject_id and stay_id
+df_main = df_main.sort_values(['subject_id', 'intime'])
 df_main2 = df_main[['subject_id','intime','age_on_admittance','icd_code']]
 
 # transform dataframe into spark due to unavailable method on normal pandas
@@ -119,8 +137,8 @@ def flatten_array(list2d):
 
 df_main = sparkDF.toPandas()
 
-# df_main["icd_code"] = df_main['icd_code'].apply(flatten_array)
-# df_main["age_on_admittance"] = df_main['age_on_admittance'].apply(flatten_array)
+df_main["icd_code"] = df_main['icd_code'].apply(flatten_array)
+df_main["age_on_admittance"] = df_main['age_on_admittance'].apply(flatten_array)
 
 print(df_main)
 
@@ -138,7 +156,7 @@ sparkDF=spark.createDataFrame(df_main, schema=schema)
 # print(sparkDF)
 sparkDF.show()
 
-sparkDF.write.parquet('behrt_format_mimic4ed_month_based')
+sparkDF.write.parquet('behrt_diagnosis_fixed_format_mimic4ed_month_based')
 
 
 

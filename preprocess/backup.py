@@ -16,7 +16,7 @@ neg_probs = np.random.normal(loc=neg_mean, scale=0.2, size=int((1 - auc) * n))
 probs = np.concatenate([pos_probs, neg_probs])
 
 n2 = 100000
-# pos_mean2 = 0.7 + (0.3 - 0.7) * (1 -  (produce 0.88 AUC curve)auc2)  # Adjust the mean of the positive class
+pos_mean2 = 0.7 + (0.3 - 0.7) * (1 - auc2)  # Adjust the mean of the positive class
 neg_mean2 = 0.3 + (0.7 - 0.3) * (1 - auc2)  # Adjust the mean of the negative class
 pos_probs2 = np.random.normal(loc=pos_mean2, scale=0.2, size=int(auc2 * n2))
 neg_probs2 = np.random.normal(loc=neg_mean2, scale=0.2, size=int((1 - auc2) * n2))

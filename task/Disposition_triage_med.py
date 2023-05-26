@@ -1,4 +1,5 @@
-import sys 
+import sys
+from matplotlib import pyplot as plt 
 
 sys.path.append('/home/josaphat/Desktop/research/BEHRT')
 
@@ -23,16 +24,17 @@ import time
 from sklearn.metrics import roc_auc_score
 from common.common import load_obj
 from model.utils import age_vocab
-from dataLoader.Disposition_med import NextVisit
-from model.Disposition_med import BertForMultiLabelPrediction
+from dataLoader.Disposition_triage_med import NextVisit
+from model.Disposition_triage_med import BertForMultiLabelPrediction
 import warnings
 warnings.filterwarnings(action='ignore')
 
 file_config = {
     'vocab':'token2idx-added',  # vocab token2idx idx2token
     'med_vocab' : 'med2idx', 
-    'train': './behrt_disposition_med_month_based_train/',
-    'test': './behrt_disposition_med_month_based_test/',
+    'triage_vocab' : 'triage2idx',
+    'train': './behrt_triage_disposition_med_month_based_train/',
+    'test': './behrt_triage_disposition_med_month_based_test/',
 }
 
 optim_config = {
@@ -45,8 +47,8 @@ global_params = {
     'batch_size': 64,
     'gradient_accumulation_steps': 1, # originally 1
     'device': 'cuda:0',
-    'output_dir': 'finetune-disposition',  # output dir
-    'best_name': 'finetune-disposition-monthbased-best', # output model name
+    'output_dir': 'finetune-disposition-triage',  # output dir
+    'best_name': 'finetune-disposition-triage-monthbased-best', # output model name
     'max_len_seq': 64, # originally is 100, ?
     'max_age': 110,
     'age_year': False,
@@ -54,10 +56,11 @@ global_params = {
     'min_visit': 3 # originally is 5
 }
 
-pretrain_model_path = 'med-MLM/med-fixed-MLM-minvisit3-monthbased'  # pretrained MLM path
+pretrain_model_path = 'triage-med-MLM/triage-med-MLM-minvisit3-monthbased'  # pretrained MLM path
 
 BertVocab = load_obj(file_config['vocab'])
 med_BertVocab = load_obj(file_config['med_vocab'])
+triage_BertVocab = load_obj(file_config['triage_vocab'])
 ageVocab, _ = age_vocab(max_age=global_params['max_age'], symbol=global_params['age_symbol'])
 
 
@@ -85,6 +88,8 @@ for i,x in enumerate(labelKey):
 model_config = {
     'vocab_size': len(BertVocab['token2idx'].keys()), # number of disease + symbols for word embedding
     'med_vocab_size': len(med_BertVocab['med2idx'].keys()), # OWN EMBEDDINGS
+    'triage_vocab_size': len(triage_BertVocab['triage2idx'].keys()), # OWN EMBEDDINGS
+
 
 
     'hidden_size': 288, # word embedding and seg embedding hidden size
@@ -103,6 +108,7 @@ model_config = {
 feature_dict = {
     'word':True,
     'med':True, # OWN EMBEDDINGS
+    'triage':True, # OWN EMBEDDINGS
     'seg':True,
     'age':True,
     'position': True
@@ -127,17 +133,23 @@ class BertConfig(Bert.modeling.BertConfig):
         self.seg_vocab_size = config.get('seg_vocab_size')
         self.age_vocab_size = config.get('age_vocab_size')
         self.med_vocab_size = config.get('med_vocab_size')  # OWN EMBEDDINGS
+        self.triage_vocab_size = config.get('triage_vocab_size')  # OWN EMBEDDINGS
+
 
 
 train = pd.read_parquet(file_config['train'])
-Dset = NextVisit(token2idx=BertVocab['token2idx'], label2idx=labelVocab, age2idx=ageVocab, med_token2idx=med_BertVocab['med2idx'], dataframe=train, max_len=global_params['max_len_seq'])
-trainload = DataLoader(dataset=Dset, batch_size=global_params['batch_size'], shuffle=True, num_workers=3)
+Dset = NextVisit(token2idx=BertVocab['token2idx'], label2idx=labelVocab, age2idx=ageVocab, 
+                 med_token2idx=med_BertVocab['med2idx'], triage2idx=triage_BertVocab['triage2idx'],
+                 dataframe=train, max_len=global_params['max_len_seq'])
+trainload = DataLoader(dataset=Dset, batch_size=global_params['batch_size'], shuffle=True, num_workers=1)
 
 
 
 test = pd.read_parquet(file_config['test'])
-Dset = NextVisit(token2idx=BertVocab['token2idx'], label2idx=labelVocab, age2idx=ageVocab, med_token2idx=med_BertVocab['med2idx'], dataframe=test, max_len=global_params['max_len_seq'])
-testload = DataLoader(dataset=Dset, batch_size=global_params['batch_size'], shuffle=False, num_workers=3)
+Dset = NextVisit(token2idx=BertVocab['token2idx'], label2idx=labelVocab, age2idx=ageVocab, 
+                 med_token2idx=med_BertVocab['med2idx'], triage2idx=triage_BertVocab['triage2idx'],
+                 dataframe=test, max_len=global_params['max_len_seq'])
+testload = DataLoader(dataset=Dset, batch_size=global_params['batch_size'], shuffle=False, num_workers=1)
 
 
 
@@ -181,6 +193,17 @@ def precision_test(logits, label):
     tempprc= sklearn.metrics.average_precision_score(label.numpy(),output.numpy(), average='samples')
     roc = sklearn.metrics.roc_auc_score(label.numpy(),output.numpy(), average='samples')
     print('auroc', roc)
+
+    sig = nn.Sigmoid()
+    output = sig(logits).numpy()
+
+    # fpr, tpr, thresholds = sklearn.metrics.roc_curve(label.numpy().ravel(), output.ravel())
+    # plt.plot(fpr, tpr)
+    # plt.xlabel('False Positive Rate')
+    # plt.ylabel('True Positive Rate')
+    # plt.title('ROC Curve')
+    # plt.show()
+    
     return tempprc, roc, output, label,
 
 
@@ -198,13 +221,17 @@ def train(e):
     cnt = 0
     for step, batch in enumerate(trainload):
         cnt +=1
-        age_ids, input_ids, posi_ids, segment_ids, attMask, targets, _ , med_input_ids = batch
+        age_ids, input_ids, posi_ids, segment_ids, attMask, targets, _ , med_input_ids, triage_input_ids = batch
         
+        # BELOW
+
         targets = torch.tensor(mlb.transform(targets.numpy()), dtype=torch.float32)
 
 
         age_ids = age_ids.to(global_params['device'])
         med_input_ids = med_input_ids.to(global_params['device']) # OWN EMBEDDINGS
+        triage_input_ids = triage_input_ids.to(global_params['device']) # OWN EMBEDDINGS
+
         input_ids = input_ids.to(global_params['device'])
         posi_ids = posi_ids.to(global_params['device'])
         segment_ids = segment_ids.to(global_params['device'])
@@ -216,7 +243,8 @@ def train(e):
                              seg_ids = segment_ids, 
                              posi_ids = posi_ids,
                              attention_mask=attMask, labels=targets,
-                             med_input_ids = med_input_ids)
+                             med_input_ids = med_input_ids,
+                             triage_input_ids = triage_input_ids)
         
         if global_params['gradient_accumulation_steps'] >1:
             loss = loss/global_params['gradient_accumulation_steps']
@@ -246,11 +274,13 @@ def evaluation():
     tr_loss = 0
     for step, batch in enumerate(testload):
         model.eval()
-        age_ids, input_ids, posi_ids, segment_ids, attMask, targets, _ , med_input_ids = batch
+        age_ids, input_ids, posi_ids, segment_ids, attMask, targets, _ , med_input_ids, triage_input_ids = batch
         targets = torch.tensor(mlb.transform(targets.numpy()), dtype=torch.float32)
         
         age_ids = age_ids.to(global_params['device'])
         med_input_ids = med_input_ids.to(global_params['device']) # OWN EMBEDDINGS
+        triage_input_ids = triage_input_ids.to(global_params['device']) # OWN EMBEDDINGS
+
         input_ids = input_ids.to(global_params['device'])
         posi_ids = posi_ids.to(global_params['device'])
         segment_ids = segment_ids.to(global_params['device'])
@@ -263,7 +293,8 @@ def evaluation():
                              seg_ids = segment_ids, 
                              posi_ids = posi_ids,
                              attention_mask=attMask, labels=targets,
-                             med_input_ids = med_input_ids)
+                             med_input_ids = med_input_ids,
+                             triage_input_ids = triage_input_ids)
         logits = logits.cpu()
         targets = targets.cpu()
         
@@ -288,7 +319,7 @@ for e in range(20):
 
     train(e)
     aps, roc, test_loss = evaluation()
-    if aps >best_pre:
+    if aps > best_pre:
         # Save a trained model
         print("** ** * Saving fine - tuned model ** ** * ")
         model_to_save = model.module if hasattr(model, 'module') else model  # Only save the model it-self

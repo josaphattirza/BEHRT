@@ -155,7 +155,6 @@ def handle_arrays(icd_code, medicine, age_on_admittance,disposition):
     return code_final_result, med_final_result, age_final_result, disposition_final_result
 
 
-
 # MIMIC IV
 df_adm = pd.read_csv('/home/josaphat/Desktop/research/mimic-iv-2.1/hosp/admissions.csv')
 df_pat = pd.read_csv('/home/josaphat/Desktop/research/mimic-iv-2.1/hosp/patients.csv')
@@ -313,7 +312,7 @@ df_main["disposition"] = df_main['disposition'].apply(flatten_array)
 
 df_main = df_main.drop('age_on_admittance', axis=1)
 
-print(df_main)
+# print(df_main)
 
 schema = StructType([
     StructField("subject_id", IntegerType(), True),

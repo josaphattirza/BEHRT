@@ -1,4 +1,8 @@
+import sys
+sys.path.append('/home/josaphat/Desktop/research/BEHRT')
+
 from datetime import date
+import pickle
 from dateutil.relativedelta import relativedelta
 
 import pandas as pd
@@ -13,161 +17,26 @@ import itertools
 from pyspark.sql.functions import udf
 from pyspark.sql.types import ArrayType, StringType
 
+from common.handleArrays import handle_arrays
+
+import sys
+sys.path.append('/path/to/mimic4ed_benchmark')
+
 
 #Create PySpark SparkSession
 spark = SparkSession.builder \
     .master("local[1]") \
     .appName("SparkApp") \
+    .config("spark.driver.memory", "64g") \
+    .config("spark.executor.memory", "64g") \
+    .config("spark.master", "local[*]") \
+    .config("spark.executor.cores", "16") \
     .getOrCreate()
 
 
 def calculate_age_on_current_admission_month_based(admission_date,anchor_time,anchor_age):
     age = relativedelta(admission_date, anchor_time).months + anchor_age*12
     return age
-
-# GOAL: To ensure that code, med, age_on_admittance, and disposition all has the same length
-# NOTE:
-# initial length:
-# code = age
-# med = disposition
-# NOTE 2:
-# CASE 1 : both code and medicine has same amount of visit (same amount of SEP)
-# CASE 2 : code has more visit (more SEP)
-# CASE 3 : med has more visit (more SEP)
-def handle_arrays(icd_code, medicine, age_on_admittance, disposition, triage):
-    code_sublists = []
-    med_sublists = []
-    age_sublists = []
-    disposition_sublists = []
-    triage_sublists = []
-
-
-    temp = []
-    temp_age = []
-    temp_disposition = []
-    temp_triage = []
-
-
-    code_final_result = []
-    med_final_result = []
-    age_final_result = []
-    disposition_final_result = []
-    triage_final_result = []
-
-    for item, age in zip(icd_code,age_on_admittance):
-        if item == "SEP":
-            code_sublists.append(temp)
-            age_sublists.append(temp_age)
-            temp = []
-            temp_age = []
-        else:
-            temp.append(item)
-            temp_age.append(age)
-    if temp:
-        code_sublists.append(temp)
-        age_sublists.append(temp_age)
-
-    for item,disp in zip(medicine,disposition):
-        if item == "SEP":
-            med_sublists.append(temp)
-            disposition_sublists.append(temp_disposition)
-            temp = []
-            temp_disposition = []
-        else:
-            temp.append(item)
-            temp_disposition.append(disp)
-    if temp:
-        med_sublists.append(temp)
-        disposition_sublists.append(temp_disposition)
-
-    for item in triage:
-        if item == "SEP":
-            triage_sublists.append(temp_triage)
-            temp_triage = []
-        else:
-            temp_triage.append(item)
-
-
-    for a,b,c,d in zip(code_sublists,med_sublists, age_sublists, disposition_sublists):
-        if len(a) > len(b):
-            diff = len(a) - len(b)
-            for _ in range(diff):
-                b.append('UNK')
-                # c.append(c[0])
-                d.append(d[0])
-        if len(b) > len(a):
-            diff = len(b) - len(a)
-            for _ in range(diff):
-                a.append('UNK')
-                c.append(c[0])
-                # d.append(d[0])
-
-                
-    for sublist in code_sublists:
-        code_final_result.extend(sublist)
-        code_final_result.append('SEP')
-
-    for sublist in med_sublists:
-        med_final_result.extend(sublist)
-        med_final_result.append('SEP')
-
-    for sublist in age_sublists:
-        age_final_result.extend(sublist)
-        age_final_result.append(sublist[0])
-
-    for sublist in disposition_sublists:
-        disposition_final_result.extend(sublist)
-        disposition_final_result.append(sublist[0])
-
-    
-
-
-    if len(code_final_result) > len(med_final_result):
-        # print("CASE 2")
-        for _ in range(len(code_final_result)-len(med_final_result)-1):
-            med_final_result.append('UNK')
-            disposition_final_result.append(disposition_final_result[-1])
-
-        med_final_result.append('SEP')
-        disposition_final_result.append(disposition_final_result[-1])
-
-
-    elif len(med_final_result) > len(code_final_result):
-        # print("CASE 3")
-        for _ in range(len(med_final_result)-len(code_final_result)-1):
-            code_final_result.append('UNK')
-            age_final_result.append(age_final_result[-1])
-
-        code_final_result.append('SEP')
-        age_final_result.append(age_final_result[-1])
-
-        
-    else:  
-        # print("CASE 1")
-        pass
-
-    # print(len(final_result1))
-    # print(len(final_result2))
-    # print(len(age_final_result))
-    # print(len(disposition_final_result))
-    # print("=======")
-
-
-    if(len(code_final_result)==len(med_final_result)==len(age_final_result)==len(disposition_final_result)):
-        # print("ALL HAS SAME LENGTH")
-        pass
-    else:
-        print('NOT SAME LENGTH')
-        print(icd_code)
-        print(medicine)
-        print(code_final_result)
-        print(med_final_result)
-
-    return code_final_result, med_final_result, \
-           age_final_result, disposition_final_result, \
-           triage_final_result
-
-
 
 # MIMIC IV
 df_adm = pd.read_csv('/home/josaphat/Desktop/research/mimic-iv-2.1/hosp/admissions.csv')
@@ -194,6 +63,59 @@ df_triage = df_triage.head(100)
 # taking relevant columns from MIMIC-IV-ED
 df_edstays = df_edstays[['subject_id','hadm_id','stay_id','intime','outtime','arrival_transport','disposition']]
 
+# Convert intime and outtime columns to datetime format
+df_edstays['intime'] = pd.to_datetime(df_edstays['intime'])
+df_edstays['outtime'] = pd.to_datetime(df_edstays['outtime'])
+
+# Sort the DataFrame by patientID and intime in ascending order
+df_edstays.sort_values(['subject_id', 'intime'], inplace=True)
+
+# Group the DataFrame by patientID
+grouped = df_edstays.groupby('subject_id')
+
+# Initialize the revisit_in_72H column with default value 'No'
+df_edstays['revisit72'] = 'No'
+
+# Iterate over each group
+for _, group in grouped:
+    # Calculate the time difference between intime and previous outtime
+    group['time_diff'] = group['intime'] - group['outtime'].shift(1)
+
+    # Mark the rows where the time difference is less than or equal to 72 hours (3 days)
+    revisit_mask = group['time_diff'] <= pd.Timedelta(hours=72)
+
+    # Update the revisit_in_72H column for the marked rows as 'Yes'
+    df_edstays.loc[group.index[1:], 'revisit72'] = revisit_mask.map({True: 'Yes', False: 'No'})
+
+
+# # # FASTER METHOD, CAN BE USED IF NEED TO RERUN
+# # # BUT VERIFY RESULT IS THE SAME AS SLOWER METHOD
+# # # PRETTY SURE IT'S THE SAME
+# # Reset the DataFrame index
+# df_edstays.reset_index(drop=True, inplace=True)
+
+# # Convert intime and outtime columns to datetime format
+# df_edstays['intime'] = pd.to_datetime(df_edstays['intime'])
+# df_edstays['outtime'] = pd.to_datetime(df_edstays['outtime'])
+
+# # Sort the DataFrame by patientID and intime in ascending order
+# df_edstays.sort_values(['subject_id', 'intime'], inplace=True)
+
+# # Calculate the time difference between intime and previous outtime for each row
+# df_edstays['time_diff'] = df_edstays.groupby('subject_id')['intime'].diff()
+
+# # Mark the rows where the time difference is less than or equal to 72 hours (3 days)
+# revisit_mask = df_edstays['time_diff'] <= pd.Timedelta(hours=72)
+
+# # Update the revisit_in_72H column based on the revisit_mask
+# df_edstays['revisit_in_72H'] = revisit_mask.map({True: 'Yes', False: 'No'})
+
+# # Drop the time_diff column
+# df_edstays.drop('time_diff', axis=1, inplace=True)
+
+# # Reset the DataFrame index
+# df_edstays.reset_index(drop=True, inplace=True)
+
 
 # transform column values to processable datetime
 df_adm.admittime = pd.to_datetime(df_adm.admittime, format = '%Y-%m-%d %H:%M:%S', errors='coerce')
@@ -205,12 +127,11 @@ df_adm = df_adm.sort_values(['subject_id', 'admittime'])
 
 
 
-# merge admission info with patient demographics info
-df_adm = df_adm.merge(df_pat, how='inner', on='subject_id')
+df_edstays = df_edstays.merge(df_pat, how='inner', on='subject_id')
 
 # taking relevant columns, save it as Main Dataframe
 df_main = df_adm[['subject_id','hadm_id',
-'admittime','dischtime','deathtime','anchor_age']]
+'admittime','dischtime','deathtime',]]
 
 # find the first time patient is admitted to the hospital, save it in anchor_time
 anchor_time = df_main.groupby('subject_id')['admittime'].min().reset_index()
@@ -218,16 +139,33 @@ anchor_time = anchor_time.rename(columns={'admittime':'anchor_time'})
 df_main = df_main.merge(anchor_time, how='left', on='subject_id')
 
 # merge patient info from MIMIC-IV with MIMIC-IV-ED edstays on same ID
-df_main = df_main.merge(df_edstays, how='inner', on = ['subject_id','hadm_id'])
+df_main = df_main.merge(df_edstays, how='outer', on = ['subject_id','hadm_id'])
+
+
+## FIXED PART
+## Fill all anchor_time if we can find anchor_time is available
+## Sometimes patient can have previous visits in adm,
+## but during their ed visit, they dont have hadm_id
+## making us unable to trace patient's anchor_time
+
+## Sort the DataFrame by subject_id and anchor_time
+df_main.sort_values(['subject_id', 'anchor_time'], inplace=True)
+# Forward fill NaN values in anchor_time column within each subject_id group
+df_main['anchor_time'].fillna(method='ffill', inplace=True)
+# Remove rows with NaN values in stay_id column, 
+# Since we don't need rows not from ED stays anyway
+df_main.dropna(subset=['stay_id'], inplace=True)
 
 
 # calculate patient age during admission
-### admittime = date on admission
+### intime = date on incoming to ED
 ### anchor_time = date when anchor_age is given
-df_main['age_on_admittance'] = df_main.apply(lambda x: calculate_age_on_current_admission_month_based(x['admittime'],x['anchor_time'],x['anchor_age']), axis=1)
+df_main['age_on_admittance'] = df_main.apply(lambda x: calculate_age_on_current_admission_month_based(x['intime'],x['anchor_time'],x['anchor_age']), axis=1)
 
 # merge ED admission with ED pyxis on same subject_id and stay_id
 df_main = df_main.merge(df_pyxis, how='outer', on=['subject_id','stay_id'])
+# Sort the DataFrame by subject_id and stay_id
+df_main = df_main.sort_values(['subject_id', 'intime'])
 df_main = df_main.rename(columns={'name':'med'})
 
 
@@ -395,7 +333,7 @@ df_triage['triage'] = df_triage_subset.apply(lambda x: x.tolist() + ['SEP'], axi
 # IMPORTANT : Because we merge using outer, fill NaN with UNK
 # REASON : some patients don't receive meds in their visit, but have diagnosis
 df_main['med'] = df_main['med'].fillna('UNK')
-df_main2 = df_main[['subject_id','stay_id','intime','age_on_admittance','med','disposition',]]
+df_main2 = df_main[['subject_id','stay_id','intime','age_on_admittance','med','disposition','revisit72']]
 
 
 # clear out medicine quantity and additonal extra information that is not needed (so we can group medicine)
@@ -436,16 +374,21 @@ df_main2['disposition'] = df_main2['disposition'].fillna('UNK')
 med_list = list(df_main2['med'])
 pd.Series(med_list).to_pickle('medicines.pkl')
 
+# # remove columns here that doesn't have age_on_admission, 
+# # this means that in df_pat, the patient age_on_admission is not available
+df_main2 = df_main2.dropna(subset=["age_on_admittance"])
+
+# df_main2 = df_main2[['subject_id', 'stay_id', 'med']]
 
 # transform dataframe into spark due to unavailable method on normal pandas
 sparkDF=spark.createDataFrame(df_main2)
 sparkDF = sparkDF.groupBy(['subject_id','intime','stay_id']).agg(F.collect_list('age_on_admittance').alias('age_on_admittance'),
                                                        F.collect_list('med').alias('med'), 
                                                        F.collect_list('disposition').alias('disposition'),
+                                                       F.collect_list('revisit72').alias('revisit72'),
                                                        )
 
 # print(sparkDF.head())
-
 
 df_main = sparkDF.toPandas()
 
@@ -468,11 +411,18 @@ sparkDF=spark.createDataFrame(df_main)
 
 # add extra age to fill the gap of sep
 extract_age = F.udf(lambda x: x[0])
-sparkDF = sparkDF.withColumn('age_temp', extract_age('age_on_admittance')).withColumn('age_on_admittance', F.concat(F.col('age_on_admittance'),F.array(F.col('age_temp')))).drop('age_temp')
-sparkDF = sparkDF.withColumn('disposition_temp', extract_age('disposition')).withColumn('disposition', F.concat(F.col('disposition'),F.array(F.col('disposition_temp')))).drop('disposition_temp')
+sparkDF = sparkDF.withColumn('age_temp', extract_age('age_on_admittance')) \
+    .withColumn('age_on_admittance', F.concat(F.col('age_on_admittance'),F.array(F.col('age_temp')))) \
+    .drop('age_temp')
+sparkDF = sparkDF.withColumn('disposition_temp', extract_age('disposition')) \
+    .withColumn('disposition', F.concat(F.col('disposition'),F.array(F.col('disposition_temp')))) \
+    .drop('disposition_temp')
+sparkDF = sparkDF.withColumn('revisit72_temp', extract_age('revisit72')) \
+    .withColumn('revisit72', F.concat(F.col('revisit72'),F.array(F.col('revisit72_temp')))) \
+    .drop('revisit72_temp')
 
 
-print(sparkDF.head())
+# print(sparkDF.head())
 
 w = Window.partitionBy('subject_id').orderBy('intime')
 # sort and merge ccs and age
@@ -480,16 +430,18 @@ sparkDF = sparkDF \
     .withColumn('med', F.collect_list('med').over(w)) \
     .withColumn('age_on_admittance', F.collect_list('age_on_admittance').over(w)) \
     .withColumn('disposition', F.collect_list('disposition').over(w)) \
+    .withColumn('revisit72', F.collect_list('revisit72').over(w)) \
     .withColumn('triage', F.collect_list('triage').over(w)) \
     .groupBy('subject_id') \
     .agg(F.max('med').alias('med'), 
          F.max('age_on_admittance').alias('age_on_admittance'), 
          F.max('disposition').alias('disposition'),
+         F.max('revisit72').alias('revisit72'),
          F.max('triage').alias('triage'),
          )
 
 
-print(sparkDF.head())
+# print(sparkDF.head())
 
 def flatten_array(list2d):
     merged = list(itertools.chain.from_iterable(list2d))
@@ -500,18 +452,20 @@ df_main = sparkDF.toPandas()
 df_main["med"] = df_main['med'].apply(flatten_array)
 df_main["age_on_admittance"] = df_main['age_on_admittance'].apply(flatten_array)
 df_main["disposition"] = df_main['disposition'].apply(flatten_array)
+df_main["revisit72"] = df_main['revisit72'].apply(flatten_array)
 df_main["triage"] = df_main['triage'].apply(flatten_array)
 
 
 df_main = df_main.drop('age_on_admittance', axis=1)
 
-print(df_main)
+# print(df_main)
 
 schema = StructType([
     StructField("subject_id", IntegerType(), True),
     StructField("med", ArrayType(StringType(), True), True),
     # StructField("age_on_admittance", ArrayType(StringType(), True), True),
     StructField("disposition", ArrayType(StringType(), True), True),
+    StructField("revisit72", ArrayType(StringType(), True), True),
     StructField("triage", ArrayType(StringType(), True), True),
 
 
@@ -519,7 +473,7 @@ schema = StructType([
 
 med_sparkDF=spark.createDataFrame(df_main, schema=schema)
 
-diagnosis_sparkDF = spark.read.parquet('./behrt_format_mimic4ed_month_based')
+diagnosis_sparkDF = spark.read.parquet('./behrt_diagnosis_fixed_format_mimic4ed_month_based')
 
 df = med_sparkDF.join(diagnosis_sparkDF, on='subject_id')
 
@@ -530,6 +484,7 @@ df = df.select("subject_id", udf_handle_arrays("icd_code",
                                                "med", 
                                                "age_on_admittance",
                                                "disposition",
+                                               "revisit72",
                                                "triage",
                                                ).alias("result"))
 df = df.select("subject_id", 
@@ -537,7 +492,8 @@ df = df.select("subject_id",
                df.result.getItem(1).alias("med"), 
                df.result.getItem(2).alias("age_on_admittance"),
                df.result.getItem(3).alias("disposition"),
-               df.result.getItem(3).alias("triage"),
+               df.result.getItem(4).alias("revisit72"),
+               df.result.getItem(5).alias("triage"),
                )
 
 # diagnoses = EHR(diagnoses).array_flatten(config['col_name']).array_flatten('age')
@@ -546,4 +502,8 @@ df = df.select("subject_id",
 # print(sparkDF)
 df.show()
 
-df.write.parquet('behrt_triage_disposition_med_month_based')
+# # Save the DataFrame as a pickle file
+# with open('df.pkl', 'wb') as f:
+#     pickle.dump(df.toPandas(), f)
+
+df.write.parquet('behrt_triage_revisit_disposition_med_month_based')

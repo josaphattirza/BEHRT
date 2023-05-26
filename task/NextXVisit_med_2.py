@@ -1,4 +1,5 @@
-import sys 
+import sys
+from matplotlib import pyplot as plt 
 
 sys.path.append('/home/josaphat/Desktop/research/BEHRT')
 
@@ -177,6 +178,17 @@ def precision_test(logits, label):
     tempprc= sklearn.metrics.average_precision_score(label.numpy(),output.numpy(), average='samples')
     roc = sklearn.metrics.roc_auc_score(label.numpy(),output.numpy(), average='samples')
     print('auroc', roc)
+
+    sig = nn.Sigmoid()
+    output = sig(logits).numpy()
+
+    # fpr, tpr, thresholds = sklearn.metrics.roc_curve(label.numpy().ravel(), output.ravel())
+    # plt.plot(fpr, tpr)
+    # plt.xlabel('False Positive Rate')
+    # plt.ylabel('True Positive Rate')
+    # plt.title('ROC Curve')
+    # plt.show()
+
     return tempprc, roc, output, label,
 
 
