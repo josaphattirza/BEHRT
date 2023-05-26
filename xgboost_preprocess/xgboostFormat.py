@@ -62,7 +62,7 @@ df_pyxis = pd.read_csv('/home/josaphat/Desktop/research/mimic-iv-ed-2.0/2.0/ed/p
 # load triage
 df_triage = pd.read_csv('/home/josaphat/Desktop/research/mimic-iv-ed-2.0/2.0/ed/triage.csv')
 
-# # For testing purposesr
+# # For testing purposes
 # df_adm = df_adm.head(100)
 # df_pat = df_pat.head(100)
 # df_edstays = df_edstays.head(100)
@@ -93,7 +93,7 @@ df_edstays['time_diff'] = df_edstays.groupby('subject_id')['intime'].diff()
 revisit_mask = df_edstays['time_diff'] <= pd.Timedelta(hours=72)
 
 # Update the revisit_in_72H column based on the revisit_mask
-df_edstays['revisit_in_72H'] = revisit_mask.map({True: 'Yes', False: 'No'})
+df_edstays['revisit_in_72H'] = revisit_mask.map({True: np.bool_(True), False: np.bool_(False)})
 
 # Drop the time_diff column
 df_edstays.drop('time_diff', axis=1, inplace=True)
@@ -153,7 +153,9 @@ df_main = df_main.sort_values(['subject_id', 'intime'])
 df_main = df_main[['subject_id','stay_id',
                    'hadm_id','intime',
                    'outtime','age_on_admittance',
-                   'disposition','icd_code','icd_version']]
+                   'disposition',
+                   'revisit_in_72H',
+                   'icd_code','icd_version']]
 
 print('reached here 1')
 
@@ -183,7 +185,9 @@ df_main = df_main.rename(columns={'name':'med'})
 df_main['med'] = df_main['med'].fillna('UNK')
 df_main2 = df_main[['subject_id','stay_id',
                     'intime','age_on_admittance',
-                    'disposition','med']]
+                    'disposition',
+                    'revisit_in_72H',
+                    'med']]
 
 
 # clear out medicine quantity and additonal extra information that is not needed (so we can group medicine)
@@ -278,12 +282,15 @@ df_main['index'] = df_main['subject_id'].astype(str) + ',' + df_main['stay_id'].
 df_main.set_index('index', inplace=True)
 df_main = df_main.drop(columns=['subject_id', 'stay_id', 'intime'])
 
-df_main = df_main.rename(columns={'disposition': 'HospitalAdmission'})
+df_main = df_main.rename(columns={'disposition': 'HospitalAdmission',
+                                   'revisit_in_72H':'Readmission'})
 data = {}
 # Create 'Y' dataframe with index and 'disposition'
-data['Y'] = df_main[['HospitalAdmission']]
+data['Y'] = df_main[['HospitalAdmission', 'Readmission']]
 # Create 'X' dataframe with all other columns
-data['X'] = df_main.drop(columns=['HospitalAdmission'])
+data['X'] = df_main.drop(columns=['HospitalAdmission','Readmission'])
+
+
 
 
 # import joblib
