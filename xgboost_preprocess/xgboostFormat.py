@@ -23,7 +23,7 @@ sys.path.append('/home/josaphat/Desktop/research/BEHRT')
 from mimic4ed_benchmark.Benchmark_scripts.medcodes.diagnoses.icd_conversion import convert_9to10
 from common.handleICD import *
 
-from triage_categories import *
+from common.triage_categories import *
 
 
 # #Create PySpark SparkSession
