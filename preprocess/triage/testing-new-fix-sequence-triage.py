@@ -344,21 +344,16 @@ df = med_sparkDF.join(diagnosis_sparkDF, on='subject_id')
 # Define the UDF
 udf_fix_sequence_length = udf(fix_sequence_length, returnType=ArrayType(ArrayType(StringType())))
 
+column_names = ["icd_code", "med", "age_on_admittance", "disposition", "revisit72", "triage"]
 # Apply the UDF
-df = df.withColumn("result", udf_fix_sequence_length("icd_code", 
-                                                     "med", 
-                                                     "age_on_admittance",
-                                                     "disposition",
-                                                     "revisit72",
-                                                     "triage"))
+df = df.withColumn("result", udf_fix_sequence_length(*column_names))
+
 # Split the result into individual columns
-df = df.select("subject_id", 
-               df.result.getItem(0).alias("icd_code"), 
-               df.result.getItem(1).alias("med"), 
-               df.result.getItem(2).alias("age_on_admittance"),
-               df.result.getItem(3).alias("disposition"),
-               df.result.getItem(4).alias("revisit72"),
-               df.result.getItem(5).alias("triage"))
+for i, column_name in enumerate(column_names):
+    df = df.withColumn(column_name, df.result.getItem(i))
+
+df = df.drop("result")
+
 
 
 # diagnoses = EHR(diagnoses).array_flatten(config['col_name']).array_flatten('age')

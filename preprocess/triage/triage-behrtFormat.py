@@ -17,7 +17,9 @@ import itertools
 from pyspark.sql.functions import udf
 from pyspark.sql.types import ArrayType, StringType
 
-from common.handleArrays import handle_arrays
+from common.handle_columns import fix_sequence_length
+from common.triage_categories import *
+
 
 import sys
 sys.path.append('/path/to/mimic4ed_benchmark')
@@ -26,12 +28,12 @@ sys.path.append('/path/to/mimic4ed_benchmark')
 #Create PySpark SparkSession
 spark = SparkSession.builder \
     .master("local[1]") \
-    .appName("SparkApp") \
-    .config("spark.driver.memory", "64g") \
-    .config("spark.executor.memory", "64g") \
-    .config("spark.master", "local[*]") \
-    .config("spark.executor.cores", "16") \
-    .getOrCreate()
+    .appName("SparkApp").getOrCreate()
+    # .config("spark.driver.memory", "64g") \
+    # .config("spark.executor.memory", "64g") \
+    # .config("spark.master", "local[*]") \
+    # .config("spark.executor.cores", "16") \
+    # .getOrCreate()
 
 
 def calculate_age_on_current_admission_month_based(admission_date,anchor_time,anchor_age):
@@ -171,156 +173,14 @@ df_main = df_main.rename(columns={'name':'med'})
 
 # clean triage data, transform float value into 5 classes for each column
 df_triage = df_triage[['subject_id', 'stay_id', 'temperature', 'heartrate', 'resprate', 'o2sat', 'sbp', 'dbp', 'pain', 'acuity']]
-
-
-# Define a function to categorize body temperatures
-def categorize_temp(temp):
-    if pd.isna(temp):
-        return 'UNK'
-    elif temp < 95:
-        return 'Temp-Hypothermia'
-    elif temp < 95.5:
-        return 'Temp-Low'
-    elif temp < 99.5:
-        return 'Temp-Normal'
-    elif temp < 100.9:
-        return 'Temp-Low grade fever'
-    elif temp < 103:
-        return 'Temp-Fever'
-    else:
-        return 'Temp-High fever'
-    
 df_triage['temperature'] = df_triage['temperature'].apply(categorize_temp)
-
-
-# Define a function to categorize heart rates
-def categorize_hr(hr):
-    if pd.isna(hr):
-        return 'UNK'
-    elif hr < 60:
-        return 'Hr-Bradycardia'
-    elif hr < 100:
-        return 'Hr-Normal'
-    elif hr < 120:
-        return 'Hr-Mild tachycardia'
-    elif hr < 150:
-        return 'Hr-Moderate tachycardia'
-    else:
-        return 'Severe tachycardia'
-
 df_triage['heartrate'] = df_triage['heartrate'].apply(categorize_hr)
-
-
-# Define a function to categorize respiratory rates
-def categorize_rr(rr):
-    if pd.isna(rr):
-        return 'UNK'
-    elif rr < 12:
-        return 'Rr-Bradypnea'
-    elif rr < 20:
-        return 'Rr-Normal'
-    elif rr < 24:
-        return 'Rr-Mild tachypnea'
-    elif rr < 30:
-        return 'Rr-Moderate tachypnea'
-    else:
-        return 'Rr-Severe tachypnea'
-
 df_triage['resprate'] = df_triage['resprate'].apply(categorize_rr)
-
-
-# Define function to categorize oxygen saturation values
-def categorize_o2sat(o2sat):
-    if pd.isna(o2sat):
-        return 'UNK'
-    elif o2sat <= 80:
-        return 'O2sat-Severe hypoxemia'
-    elif o2sat <= 90:
-        return 'O2sat-Moderate hypoxemia'
-    elif o2sat <= 94:
-        return 'O2sat-Mild hypoxemia'
-    elif o2sat <= 97:
-        return 'O2sat-Normal'
-    else:
-        return 'O2sat-Normal to high'
-
 df_triage['o2sat'] = df_triage['o2sat'].apply(categorize_o2sat)
-
-
-# Define a function to categorize SBP
-def categorize_sbp(sbp):
-    if pd.isna(sbp):
-        return 'UNK'
-    elif sbp >= 180:
-        return 'Sbp-Severe hypertension'
-    elif sbp >= 160:
-        return 'Sbp-Stage 2 hypertension'
-    elif sbp >= 140:
-        return 'Sbp-Stage 1 hypertension'
-    elif sbp >= 120:
-        return 'Sbp-Prehypertension'
-    else:
-        return 'Sbp-Normal blood pressure'
-
 df_triage['sbp'] = df_triage['sbp'].apply(categorize_sbp)
-
-
-# Define a function to categorize DBP
-def categorize_dbp(dbp):
-    if pd.isna(dbp):
-        return 'UNK'
-    if dbp >= 100:
-        return 'Dbp-Stage 2 hypertension'
-    elif dbp >= 90:
-        return 'Dbp-Stage 1 hypertension'
-    elif dbp >= 80:
-        return 'Dbp-Prehypertension'
-    elif dbp >= 60:
-        return 'Dbp-Normal'
-    else:
-        return 'Dbp-Low'
-
 df_triage['dbp'] = df_triage['dbp'].apply(categorize_dbp)
-
-
-# Define a function to categorize pain levels
-def categorize_pain(pl):
-    if pd.isna(pl):
-        return 'UNK'
-    elif pl == 0:
-        return 'Pain-No pain'
-    elif pl <= 3:
-        return 'Pain-Mild pain'
-    elif pl <= 6:
-        return 'Pain-Moderate pain'
-    elif pl <= 9:
-        return 'Pain-Severe pain'
-    elif 10 <= pl <= 13:
-        return 'Pain-Very severe pain'
-    else:
-        return 'UNK'
-
 df_triage['pain'] = pd.to_numeric(df_triage['pain'], errors='coerce')
 df_triage['pain'] = df_triage['pain'].apply(categorize_pain)
-
-
-# Define a function to categorize acuity scores
-def categorize_acuity(acuity):
-    if pd.isna(acuity):
-        return 'UNK'
-    elif acuity == 1:
-        return 'Acuity-1'
-    elif acuity == 2:
-        return 'Acuity-2'
-    elif acuity == 3:
-        return 'Acuity-3'
-    elif acuity == 4:
-        return 'Acuity-4'
-    elif acuity == 5:
-        return 'Acuity-5'
-    else:
-        return 'UNK'
-
 df_triage['acuity'] = df_triage['acuity'].apply(categorize_acuity)
 
 
@@ -377,8 +237,9 @@ pd.Series(med_list).to_pickle('medicines.pkl')
 # # remove columns here that doesn't have age_on_admission, 
 # # this means that in df_pat, the patient age_on_admission is not available
 df_main2 = df_main2.dropna(subset=["age_on_admittance"])
+# Convert to string so we can add SEP later
+df_main2['age_on_admittance'] = df_main2['age_on_admittance'].astype(int).astype(str)
 
-# df_main2 = df_main2[['subject_id', 'stay_id', 'med']]
 
 # transform dataframe into spark due to unavailable method on normal pandas
 sparkDF=spark.createDataFrame(df_main2)
@@ -405,21 +266,26 @@ df_main = df_main.merge(df_triage[['subject_id', 'stay_id', 'triage']], how='inn
 triage_categories_list = list(df_main['triage'])
 pd.Series(triage_categories_list).to_pickle('triage_categories.pkl')
 
-# print(sparkDF.head())after
+# print(sparkDF.head())
+
+df_main['age_on_admittance'] = df_main.apply(lambda row: array_add_element(row['age_on_admittance'], 'SEP'),axis = 1)
+df_main['revisit72'] = df_main.apply(lambda row: array_add_element(row['revisit72'], 'SEP'),axis = 1)
+df_main['disposition'] = df_main.apply(lambda row: array_add_element(row['disposition'], 'SEP'),axis = 1)
+
 
 sparkDF=spark.createDataFrame(df_main)
 
-# add extra age to fill the gap of sep
-extract_age = F.udf(lambda x: x[0])
-sparkDF = sparkDF.withColumn('age_temp', extract_age('age_on_admittance')) \
-    .withColumn('age_on_admittance', F.concat(F.col('age_on_admittance'),F.array(F.col('age_temp')))) \
-    .drop('age_temp')
-sparkDF = sparkDF.withColumn('disposition_temp', extract_age('disposition')) \
-    .withColumn('disposition', F.concat(F.col('disposition'),F.array(F.col('disposition_temp')))) \
-    .drop('disposition_temp')
-sparkDF = sparkDF.withColumn('revisit72_temp', extract_age('revisit72')) \
-    .withColumn('revisit72', F.concat(F.col('revisit72'),F.array(F.col('revisit72_temp')))) \
-    .drop('revisit72_temp')
+# # add extra age to fill the gap of sep
+# extract_age = F.udf(lambda x: x[0])
+# sparkDF = sparkDF.withColumn('age_temp', extract_age('age_on_admittance')) \
+#     .withColumn('age_on_admittance', F.concat(F.col('age_on_admittance'),F.array(F.col('age_temp')))) \
+#     .drop('age_temp')
+# sparkDF = sparkDF.withColumn('disposition_temp', extract_age('disposition')) \
+#     .withColumn('disposition', F.concat(F.col('disposition'),F.array(F.col('disposition_temp')))) \
+#     .drop('disposition_temp')
+# sparkDF = sparkDF.withColumn('revisit72_temp', extract_age('revisit72')) \
+#     .withColumn('revisit72', F.concat(F.col('revisit72'),F.array(F.col('revisit72_temp')))) \
+#     .drop('revisit72_temp')
 
 
 # print(sparkDF.head())
@@ -455,15 +321,12 @@ df_main["disposition"] = df_main['disposition'].apply(flatten_array)
 df_main["revisit72"] = df_main['revisit72'].apply(flatten_array)
 df_main["triage"] = df_main['triage'].apply(flatten_array)
 
-
-df_main = df_main.drop('age_on_admittance', axis=1)
-
 # print(df_main)
 
 schema = StructType([
     StructField("subject_id", IntegerType(), True),
     StructField("med", ArrayType(StringType(), True), True),
-    # StructField("age_on_admittance", ArrayType(StringType(), True), True),
+    StructField("age_on_admittance", ArrayType(StringType(), True), True),
     StructField("disposition", ArrayType(StringType(), True), True),
     StructField("revisit72", ArrayType(StringType(), True), True),
     StructField("triage", ArrayType(StringType(), True), True),
@@ -474,27 +337,29 @@ schema = StructType([
 med_sparkDF=spark.createDataFrame(df_main, schema=schema)
 
 diagnosis_sparkDF = spark.read.parquet('./behrt_diagnosis_fixed_format_mimic4ed_month_based')
+diagnosis_sparkDF = diagnosis_sparkDF.drop('age_on_admittance')
 
 df = med_sparkDF.join(diagnosis_sparkDF, on='subject_id')
 
 # Define the UDF
-udf_handle_arrays = udf(handle_arrays, returnType=ArrayType(ArrayType(StringType())))
+udf_fix_sequence_length = udf(fix_sequence_length, returnType=ArrayType(ArrayType(StringType())))
 
-df = df.select("subject_id", udf_handle_arrays("icd_code", 
-                                               "med", 
-                                               "age_on_admittance",
-                                               "disposition",
-                                               "revisit72",
-                                               "triage",
-                                               ).alias("result"))
+# Apply the UDF
+df = df.withColumn("result", udf_fix_sequence_length("icd_code", 
+                                                     "med", 
+                                                     "age_on_admittance",
+                                                     "disposition",
+                                                     "revisit72",
+                                                     "triage"))
+# Split the result into individual columns
 df = df.select("subject_id", 
                df.result.getItem(0).alias("icd_code"), 
                df.result.getItem(1).alias("med"), 
                df.result.getItem(2).alias("age_on_admittance"),
                df.result.getItem(3).alias("disposition"),
                df.result.getItem(4).alias("revisit72"),
-               df.result.getItem(5).alias("triage"),
-               )
+               df.result.getItem(5).alias("triage"))
+
 
 # diagnoses = EHR(diagnoses).array_flatten(config['col_name']).array_flatten('age')
 # diagnoses.write.parquet(config['output'])
@@ -506,4 +371,4 @@ df.show()
 # with open('df.pkl', 'wb') as f:
 #     pickle.dump(df.toPandas(), f)
 
-df.write.parquet('behrt_triage_revisit_disposition_med_month_based')
+df.write.parquet('behrtTT_triage_revisit_disposition_med_month_based')

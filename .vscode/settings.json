@@ -1,5 +1,6 @@
 {
     "python.analysis.extraPaths": [
-        "./xgboost_preprocess"
+        "./xgboost_preprocess",
+        "./mimic4ed_benchmark/Benchmark_scripts"
     ]
 }

@@ -1,33 +1,31 @@
-def process_column(column):
-    sublists = []
-    temp = []
-    for item in column:
-        if item == "SEP":
-            sublists.append(temp)
-            temp = []
-        else:
-            temp.append(item)
-    if temp:
-        sublists.append(temp)
-    return sublists
-
 def fix_sequence_length(*args):
-# def fix_sequence_length(single_value_columns, multiple_value_columns):
+    def process_column(column):
+        if column is None:  # Handle None values
+            return [[]]
+        sublists = []
+        temp = []
+        for item in column:
+            if item == "SEP":
+                sublists.append(temp)
+                temp = []
+            else:
+                temp.append(item)
+        if temp:
+            sublists.append(temp)
+        return sublists
+
     # Process all columns
     processed_columns = [process_column(column) for column in args]
 
+    # Compute the maximum lengths
     max_length_2nd_tier = max(len(max(inner_list, key=len)) for inner_list in processed_columns)
     max_len = max(len(sublist) for sublist in processed_columns)
 
-    # Create the new 2D list with 'UNK' elements
-    # processed_columns_new = [[['UNK'] * max_length_2nd_tier for _ in range(max_len)] for _ in processed_columns]
-    processed_columns_new = []
-    for _ in range(max_len):
-        second_tier_list = []
-        for _ in range(max_length_2nd_tier):
-            second_tier_list.append('UNK')
-        processed_columns_new.append(second_tier_list)
+    # Replace [] with ['UNK']*max_length_2nd_tier
+    processed_columns = [['UNK']*max_length_2nd_tier if column==[] else column for column in processed_columns]
 
+    # Create the new 2D list with 'UNK' elements
+    processed_columns_new = [[['UNK'] * max_length_2nd_tier for _ in range(max_len)] for _ in processed_columns]
 
     # Transfer data from old columns to new ones
     for i in range(len(processed_columns)):
