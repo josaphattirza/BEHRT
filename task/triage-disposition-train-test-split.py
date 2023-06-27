@@ -28,10 +28,21 @@ df = df.withColumnRenamed('disposition', 'label')
 last_elem_with_sep = udf(lambda arr: [arr[-1]], ArrayType(StringType()))
 
 
-# apply the UDF to the 'label' column
-df = df.withColumn('label', last_elem_with_sep(df['label']))
+# # apply the UDF to the 'label' column
+# df = df.withColumn('label', last_elem_with_sep(df['label']))
 
+# # Define a UDF to replace 'EXPIRED' and 'OTHER' with 'OTHER'
+# def replace_labels(label_list):
+#     if label_list[0] in ['EXPIRED','OTHER']:
+#         return ['OTHER']
+#     else:
+#         return label_list
 
+# # Register the UDF
+# replace_labels_udf = udf(replace_labels, ArrayType(StringType()))
+
+# # Apply the UDF to the 'label' column
+# df = df.withColumn('label', replace_labels_udf(df['label']))
 
 df.select("label").show()
 
@@ -55,5 +66,5 @@ train_data, test_data = df.randomSplit([0.8, 0.2], seed=1234)
 print("Training set size:", train_data.count())
 print("Test set size:", test_data.count())
 
-train_data.write.parquet('behrt_triage_disposition_med_month_based_train')
-test_data.write.parquet('behrt_triage_disposition_med_month_based_test')   
+train_data.write.parquet('behrt_triage_disposition_med_month_based_train2')
+test_data.write.parquet('behrt_triage_disposition_med_month_based_test2')   

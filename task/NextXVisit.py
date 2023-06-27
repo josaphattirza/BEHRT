@@ -156,6 +156,8 @@ mode = load_model(pretrain_model_path, model)
 
 model = model.to(global_params['device'])
 optim = optimiser.adam(params=list(model.named_parameters()), config=optim_config)
+model = BertForMultiLabelPrediction(conf, num_labels=len(labelVocab.keys()), feature_dict=feature_dict)
+
 
 
 import sklearn

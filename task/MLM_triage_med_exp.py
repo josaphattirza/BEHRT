@@ -13,7 +13,7 @@ from common.common import load_obj
 from dataLoader.MLM_triage_med import MLMLoader
 from torch.utils.data import DataLoader
 import pandas as pd
-from model.MLM_triage_med_exp import BertForMaskedLM
+from model.MLM_triage_med import BertForMaskedLM
 from model.optimiser import adam
 import sklearn.metrics as skm
 import numpy as np
@@ -63,14 +63,14 @@ file_config = {
     'med_vocab' : 'med2idx', 
     'triage_vocab' : 'triage2idx',
     'data': './behrt_triage_disposition_med_month_based/',  # formated data 
-    'model_path': 'triage-testing-med-MLM', # where to save model
-    'model_name': 'triage-testing-med-MLM-minvisit3-monthbased', # model name
-    'file_name': 'triage-testing-med-MLM-minvisit3-monthbased-log',  # log path
+    'model_path': 'triage-med-MLM-100', # where to save model
+    'model_name': 'triage-med-MLM-minvisit3-monthbased', # model name
+    'file_name': 'triage-med-MLM-minvisit3-monthbased-log',  # log path
 }
 create_folder(file_config['model_path'])
 
 global_params = {
-    'max_seq_len': 64,
+    'max_seq_len': 100,
     'max_age': 110,
     'month': 1,
     'age_symbol': None,
@@ -79,7 +79,7 @@ global_params = {
 }
 
 optim_param = {
-    'lr': 3e-6, # original is 3e-5
+    'lr': 3e-5, # original is 3e-5
     'warmup_proportion': 0.1,
     'weight_decay': 0.01
 }
@@ -133,6 +133,7 @@ model_config = {
 
 conf = BertConfig(model_config)
 model = BertForMaskedLM(conf)
+
 
 model = model.to(train_params['device'])
 optim = adam(params=list(model.named_parameters()), config=optim_param)

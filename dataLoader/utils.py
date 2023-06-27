@@ -14,6 +14,19 @@ def code2index(tokens, token2idx, mask_token=None, printSetting = False):
     return tokens, output_tokens
 
 
+def label2index(tokens, token2idx, mask_token=None, printSetting = False):
+    output_tokens = []
+    for i, token in enumerate(tokens):
+        if token==mask_token:
+            output_tokens.append(token2idx['ADMITTED'])
+        else:
+            output_tokens.append(token2idx.get(token, token2idx['ADMITTED']))
+    # if printSetting == True:
+    #     print("label tokens",tokens)
+    #     print("label output_tokens", output_tokens)
+    return tokens, output_tokens
+
+
 def random_mask(tokens, token2idx):
     output_label = []
     output_token = []

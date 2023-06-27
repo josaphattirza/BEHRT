@@ -21,10 +21,10 @@ import random
 import numpy as np
 import torch
 import time
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, roc_curve
 from common.common import load_obj
 from model.utils import age_vocab
-from dataLoader.Disposition_triage_med import NextVisit
+from dataLoader.Disposition_triage import NextVisit
 from model.Disposition_triage_med import BertForMultiLabelPrediction
 import warnings
 warnings.filterwarnings(action='ignore')
@@ -33,8 +33,8 @@ file_config = {
     'vocab':'token2idx-added',  # vocab token2idx idx2token
     'med_vocab' : 'med2idx', 
     'triage_vocab' : 'triage2idx',
-    'train': './behrt_triage_disposition_med_month_based_train/',
-    'test': './behrt_triage_disposition_med_month_based_test/',
+    'train': './behrt_triage_disposition_med_month_based_train2/',
+    'test': './behrt_triage_disposition_med_month_based_test2/',
 }
 
 optim_config = {
@@ -58,6 +58,8 @@ global_params = {
 
 pretrain_model_path = 'triage-med-MLM/triage-med-MLM-minvisit3-monthbased'  # pretrained MLM path
 
+# pretrain_model_path = 'exp-model/minvisit3-monthbased-model'
+
 BertVocab = load_obj(file_config['vocab'])
 med_BertVocab = load_obj(file_config['med_vocab'])
 triage_BertVocab = load_obj(file_config['triage_vocab'])
@@ -78,8 +80,9 @@ ageVocab, _ = age_vocab(max_age=global_params['max_age'], symbol=global_params['
 #     return labelVocab
 
 
-# OWN LABEL VOCAB , since we want to predict disposition
-labelKey = ["UNK","ADMITTED","OTHER","EXPIRED","HOME"]
+# # OWN LABEL VOCAB , since we want to predict disposition
+# labelKey = ["ADMITTED","OTHER","EXPIRED","HOME"]
+labelKey = ["ADMITTED","OTHER","HOME"]
 labelVocab = {}
 for i,x in enumerate(labelKey):
     labelVocab[x] = i
@@ -102,7 +105,7 @@ model_config = {
     'attention_probs_dropout_prob': 0.1, # multi-head attention dropout rate
     'intermediate_size': 512, # the size of the "intermediate" layer in the transformer encoder
     'hidden_act': 'gelu', # The non-linear activation function in the encoder and the pooler "gelu", 'relu', 'swish' are supported
-    'initializer_range': 0.02, # parameter weight initializer range
+    'initializer_range': 0.02, # parameter weight initializer range 
 }
 
 feature_dict = {
@@ -155,7 +158,28 @@ testload = DataLoader(dataset=Dset, batch_size=global_params['batch_size'], shuf
 
 # del model
 conf = BertConfig(model_config)
-model = BertForMultiLabelPrediction(conf, num_labels=len(labelVocab.keys()), feature_dict=feature_dict)
+
+
+
+
+# OWN CHANGES, comment all of this if want to use the old model
+# Assuming `train` is a pandas DataFrame with the label column named "label"
+class_labels = ["ADMITTED", "OTHER", "HOME"]  # List of class labels in order
+# class_labels = ["ADMITTED","OTHER","EXPIRED","HOME"]
+
+# Extract the single label value from each array
+train['label'] = train['label'].apply(lambda x: x[0])
+
+train['label'] = pd.Categorical(train['label'], categories=class_labels)
+class_counts = train['label'].value_counts().reindex(class_labels, fill_value=0)
+total_samples = len(train)
+class_weights = total_samples / (len(class_labels) * class_counts)
+
+print("Class Weights:", class_weights)
+model = BertForMultiLabelPrediction(conf, num_labels=len(labelVocab.keys()), feature_dict=feature_dict, weights=class_weights)
+# COMMENT UNTIL HERE
+
+# model = BertForMultiLabelPrediction(conf, num_labels=len(labelVocab.keys()), feature_dict=feature_dict)
 
 
 
@@ -171,7 +195,9 @@ def load_model(path, model):
     model.load_state_dict(model_dict)
     return model
 
-mode = load_model(pretrain_model_path, model)
+# in the original version, it's mode, is it correct?
+# OWN CHANGES
+model = load_model(pretrain_model_path, model)
 
 
 model = model.to(global_params['device'])
@@ -187,24 +213,90 @@ def precision(logits, label):
     print('tempprc', tempprc)
     return tempprc, output, label
 
+# def precision_test(logits, label):
+#     sig = nn.Sigmoid()
+#     output=sig(logits)
+#     tempprc= sklearn.metrics.average_precision_score(label.numpy(),output.numpy(), average='samples')
+#     roc = sklearn.metrics.roc_auc_score(label.numpy(),output.numpy(), average='samples')
+#     # print('auroc', roc)
+
+#     sig = nn.Sigmoid()
+#     output = sig(logits).numpy()
+
+#     # fpr, tpr, thresholds = sklearn.metrics.roc_curve(label.numpy().ravel(), output.ravel())
+#     # plt.plot(fpr, tpr)
+#     # plt.xlabel('False Positive Rate')
+#     # plt.ylabel('True Positive Rate')
+#     # plt.title('ROC Curve')
+#     # plt.show()
+    
+#     return tempprc, roc, output, label,
+
+from sklearn.metrics import roc_curve, auc
+import matplotlib.pyplot as plt
+from itertools import cycle
+
+
+from sklearn.metrics import roc_auc_score
+from sklearn.preprocessing import LabelBinarizer
+
 def precision_test(logits, label):
-    sig = nn.Sigmoid()
-    output=sig(logits)
-    tempprc= sklearn.metrics.average_precision_score(label.numpy(),output.numpy(), average='samples')
-    roc = sklearn.metrics.roc_auc_score(label.numpy(),output.numpy(), average='samples')
-    print('auroc', roc)
+    # sig = nn.Sigmoid()
+    # output=sig(logits)
+    
+    # testing out new models
+    softmax = nn.Softmax(dim=1)
+    output=softmax(logits)
+    
+    # Convert to numpy
+    output = output.numpy()
+    label = label.numpy()
+    
+    n_classes = label.shape[1] # Assuming label is one-hot encoded
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+    auc_score = 0.0
+    total_samples = 0
 
-    sig = nn.Sigmoid()
-    output = sig(logits).numpy()
+    for i in range(n_classes):
+        fpr[i], tpr[i], _ = roc_curve(label[:, i], output[:, i])
+        roc_auc[i] = auc(fpr[i], tpr[i])
+        
+        # Weighted average AUC computation
+        num_samples = np.sum(label[:, i])
+        auc_score += roc_auc[i] * num_samples
+        total_samples += num_samples
 
-    # fpr, tpr, thresholds = sklearn.metrics.roc_curve(label.numpy().ravel(), output.ravel())
-    # plt.plot(fpr, tpr)
+    # Compute weighted-average ROC AUC
+    roc_auc["weighted"] = auc_score / total_samples
+
+    print(f'Weighted average AUC: {roc_auc["weighted"]}')
+
+    # # Plot all ROC curves
+    # plt.figure()
+    # for i, color in zip(range(n_classes), cycle(['aqua', 'darkorange', 'cornflowerblue'])):
+    #     plt.plot(fpr[i], tpr[i], color=color, 
+    #              label='ROC curve of class {0} (area = {1:0.2f})'
+    #              ''.format(i, roc_auc[i]))
+
+    # plt.plot([0, 1], [0, 1], 'k--')
+    # plt.xlim([0.0, 1.0])
+    # plt.ylim([0.0, 1.05])
     # plt.xlabel('False Positive Rate')
     # plt.ylabel('True Positive Rate')
-    # plt.title('ROC Curve')
+    # plt.title('Receiver Operating Characteristic to Multi-Class')
+    # plt.legend(loc="lower right")
     # plt.show()
-    
-    return tempprc, roc, output, label,
+
+
+    tempprc= sklearn.metrics.average_precision_score(label, output, average='samples')
+    return tempprc, roc_auc, output, label,
+
+
+
+
+
 
 
 from sklearn.preprocessing import MultiLabelBinarizer
@@ -222,9 +314,6 @@ def train(e):
     for step, batch in enumerate(trainload):
         cnt +=1
         age_ids, input_ids, posi_ids, segment_ids, attMask, targets, _ , med_input_ids, triage_input_ids = batch
-        
-        # BELOW
-
         targets = torch.tensor(mlb.transform(targets.numpy()), dtype=torch.float32)
 
 
@@ -267,7 +356,7 @@ def train(e):
     print('final step amount: ', step)
 
 
-def evaluation():
+def evaluation(e):
     model.eval()
     y = []
     y_label = []
@@ -306,8 +395,35 @@ def evaluation():
     y_label = torch.cat(y_label, dim=0)
     y = torch.cat(y, dim=0)
 
+    # # Convert logits and targets to binary labels
+    # y_binary = (y.detach().numpy() > 0.5).astype(int)
+    # y_label_binary = y_label.detach().numpy()
+
+    # # Apply argmax to obtain single class prediction
+    # y_pred = np.argmax(y_binary, axis=1)
+
+    # # Convert to one-hot encoding
+    # y_pred_one_hot = np.eye(5)[y_pred]
+
+    # train_labels = [1, 2, 3, 4]
+    # mlb.fit(train_labels)
+
+    # # Convert binary labels to human-readable form
+    # logits_labels = mlb.inverse_transform(y_pred_one_hot)
+    # targets_labels = mlb.inverse_transform(y_label_binary)
+
+    # # Print out logits and targets
+    # for i in range(len(logits_labels)):
+    #     print(f"Input {i}:")
+    #     print(f"Logits: {logits_labels[i]}")
+    #     print(f"Targets: {targets_labels[i]}\n")
+
     aps, roc, output, label = precision_test(y, y_label)
     return aps, roc, tr_loss
+
+    # if e == 10:
+    #     aps, roc, output, label = precision_test(y, y_label)
+    # return 0,0,0
 
 
 
@@ -315,10 +431,10 @@ best_pre = 0.0
 
 # # originally epoch is 50
 # for e in range(50): 
-for e in range(20):
+for e in range(50):
 
     train(e)
-    aps, roc, test_loss = evaluation()
+    aps, roc, test_loss = evaluation(e)
     if aps > best_pre:
         # Save a trained model
         print("** ** * Saving fine - tuned model ** ** * ")

@@ -24,7 +24,7 @@ import time
 from sklearn.metrics import roc_auc_score
 from common.common import load_obj
 from model.utils import age_vocab
-from dataLoader.Disposition_triage_med import NextVisit
+from dataLoader.Disposition_triage import NextVisit
 from model.Disposition_triage_med import BertForMultiLabelPrediction
 import warnings
 warnings.filterwarnings(action='ignore')
@@ -38,7 +38,7 @@ file_config = {
 }
 
 optim_config = {
-    'lr': 3e-8, # originally 3e-5
+    'lr': 3e-5, # originally 3e-5
     'warmup_proportion': 0.1,
     'weight_decay': 0.01
 }
@@ -49,14 +49,14 @@ global_params = {
     'device': 'cuda:0',
     'output_dir': 'finetune-disposition-triage',  # output dir
     'best_name': 'finetune-disposition-triage-monthbased-best', # output model name
-    'max_len_seq': 64, # originally is 100, ?
+    'max_len_seq': 100, # originally is 100, ?
     'max_age': 110,
     'age_year': False,
     'age_symbol': None,
     'min_visit': 3 # originally is 5
 }
 
-pretrain_model_path = 'triage-testing-med-MLM/triage-testing-med-MLM-minvisit3-monthbased'  # pretrained MLM path
+pretrain_model_path = 'triage-med-MLM-100/triage-med-MLM-minvisit3-monthbased'  # pretrained MLM path
 
 BertVocab = load_obj(file_config['vocab'])
 med_BertVocab = load_obj(file_config['med_vocab'])
@@ -171,7 +171,9 @@ def load_model(path, model):
     model.load_state_dict(model_dict)
     return model
 
-mode = load_model(pretrain_model_path, model)
+# in the original version, it's mode, is it correct?
+# OWN CHANGES
+model = load_model(pretrain_model_path, model)
 
 
 model = model.to(global_params['device'])
@@ -197,12 +199,12 @@ def precision_test(logits, label):
     sig = nn.Sigmoid()
     output = sig(logits).numpy()
 
-    fpr, tpr, thresholds = sklearn.metrics.roc_curve(label.numpy().ravel(), output.ravel())
-    plt.plot(fpr, tpr)
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('ROC Curve')
-    plt.show()
+    # fpr, tpr, thresholds = sklearn.metrics.roc_curve(label.numpy().ravel(), output.ravel())
+    # plt.plot(fpr, tpr)
+    # plt.xlabel('False Positive Rate')
+    # plt.ylabel('True Positive Rate')
+    # plt.title('ROC Curve')
+    # plt.show()
     
     return tempprc, roc, output, label,
 
@@ -222,9 +224,6 @@ def train(e):
     for step, batch in enumerate(trainload):
         cnt +=1
         age_ids, input_ids, posi_ids, segment_ids, attMask, targets, _ , med_input_ids, triage_input_ids = batch
-        
-        # BELOW
-
         targets = torch.tensor(mlb.transform(targets.numpy()), dtype=torch.float32)
 
 

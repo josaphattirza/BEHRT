@@ -134,6 +134,7 @@ model_config = {
 conf = BertConfig(model_config)
 model = BertForMaskedLM(conf)
 
+
 model = model.to(train_params['device'])
 optim = adam(params=list(model.named_parameters()), config=optim_param)
 

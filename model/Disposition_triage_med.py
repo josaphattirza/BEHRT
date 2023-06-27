@@ -138,8 +138,9 @@ class BertModel(Bert.modeling.BertPreTrainedModel):
         return encoded_layers, pooled_output
 
 
+# OWN CHANGES
 class BertForMultiLabelPrediction(Bert.modeling.BertPreTrainedModel):
-    def __init__(self, config, num_labels, feature_dict):
+    def __init__(self, config, num_labels, feature_dict, weights=None):
         super(BertForMultiLabelPrediction, self).__init__(config)
         self.num_labels = num_labels
         self.bert = BertModel(config, feature_dict)
@@ -147,23 +148,72 @@ class BertForMultiLabelPrediction(Bert.modeling.BertPreTrainedModel):
         self.classifier = nn.Linear(config.hidden_size, num_labels)
         self.apply(self.init_bert_weights)
 
+        if weights is not None:
+            self.weights = torch.tensor(weights, dtype=torch.float) # Convert weights to tensor if provided
+        else:
+            self.weights = None
+            
     def forward(self, input_ids, med_input_ids, triage_input_ids, age_ids=None, seg_ids=None, posi_ids=None, attention_mask=None, labels=None):
         _, pooled_output = self.bert(input_ids = input_ids, 
-                                     med_input_ids = med_input_ids,
-                                     triage_input_ids = triage_input_ids,
-                                     age_ids = age_ids, 
-                                     seg_ids = seg_ids, 
-                                     posi_ids = posi_ids, 
-                                     attention_mask = attention_mask, 
-                                     output_all_encoded_layers=False) # OWN EMBEDDINGS
+                                    med_input_ids = med_input_ids,
+                                    triage_input_ids = triage_input_ids,
+                                    age_ids = age_ids, 
+                                    seg_ids = seg_ids, 
+                                    posi_ids = posi_ids, 
+                                    attention_mask = attention_mask, 
+                                    output_all_encoded_layers=False) # OWN EMBEDDINGS
         pooled_output = self.dropout(pooled_output)
         logits = self.classifier(pooled_output)
 
         if labels is not None:
-            loss_fct = nn.MultiLabelSoftMarginLoss()
+            if self.weights is not None:
+                self.weights = self.weights.to(input_ids.device)  # This line ensures weights are on the same device as your model and data
+                loss_fct = nn.CrossEntropyLoss(weight=self.weights)
+            else:
+                loss_fct = nn.CrossEntropyLoss()
+            
+            # GPT OPTION
+            # labels = torch.argmax(labels, dim=1) # Convert one-hot encoded labels back to class indices
+            # loss = loss_fct(logits.view(-1, self.num_labels), labels)
+
+            # MY OPTION
             loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1, self.num_labels))
-            # print("logits",logits)
-            # print("labels",labels)
+
             return loss, logits
         else:
             return logits
+
+
+
+
+
+# class BertForMultiLabelPrediction(Bert.modeling.BertPreTrainedModel):
+#     def __init__(self, config, num_labels, feature_dict):
+#         super(BertForMultiLabelPrediction, self).__init__(config)
+#         self.num_labels = num_labels
+#         self.bert = BertModel(config, feature_dict)
+#         self.dropout = nn.Dropout(config.hidden_dropout_prob)
+#         self.classifier = nn.Linear(config.hidden_size, num_labels)
+#         self.apply(self.init_bert_weights)
+
+#     def forward(self, input_ids, med_input_ids, triage_input_ids, age_ids=None, seg_ids=None, posi_ids=None, attention_mask=None, labels=None):
+#         _, pooled_output = self.bert(input_ids = input_ids, 
+#                                      med_input_ids = med_input_ids,
+#                                      triage_input_ids = triage_input_ids,
+#                                      age_ids = age_ids, 
+#                                      seg_ids = seg_ids, 
+#                                      posi_ids = posi_ids, 
+#                                      attention_mask = attention_mask, 
+#                                      output_all_encoded_layers=False) # OWN EMBEDDINGS
+#         pooled_output = self.dropout(pooled_output)
+#         logits = self.classifier(pooled_output)
+
+#         if labels is not None:
+#             # loss_fct = nn.MultiLabelSoftMarginLoss()
+#             loss_fct = nn.CrossEntropyLoss()
+#             loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1, self.num_labels))
+#             # print("logits",logits)
+#             # print("labels",labels)
+#             return loss, logits
+#         else:
+#             return logits
