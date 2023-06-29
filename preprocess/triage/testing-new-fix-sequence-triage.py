@@ -28,12 +28,12 @@ sys.path.append('/path/to/mimic4ed_benchmark')
 #Create PySpark SparkSession
 spark = SparkSession.builder \
     .master("local[1]") \
-    .appName("SparkApp").getOrCreate()
-    # .config("spark.driver.memory", "64g") \
-    # .config("spark.executor.memory", "64g") \
-    # .config("spark.master", "local[*]") \
-    # .config("spark.executor.cores", "16") \
-    # .getOrCreate()
+    .appName("SparkApp") \
+    .config("spark.driver.memory", "64g") \
+    .config("spark.executor.memory", "64g") \
+    .config("spark.master", "local[*]") \
+    .config("spark.executor.cores", "16") \
+    .getOrCreate()
 
 
 def calculate_age_on_current_admission_month_based(admission_date,anchor_time,anchor_age):
@@ -54,13 +54,13 @@ df_pyxis = pd.read_csv('/home/josaphat/Desktop/research/mimic-iv-ed-2.0/2.0/ed/p
 # load triage
 df_triage = pd.read_csv('/home/josaphat/Desktop/research/mimic-iv-ed-2.0/2.0/ed/triage.csv')
 
-# For testing purposes
-df_adm = df_adm.head(100)
-df_pat = df_pat.head(100)
-df_edstays = df_edstays.head(100)
-df_eddiagnosis = df_eddiagnosis.head(100)
-df_pyxis = df_pyxis.head(100)
-df_triage = df_triage.head(100)
+# # For testing purposes
+# df_adm = df_adm.head(100)
+# df_pat = df_pat.head(100)
+# df_edstays = df_edstays.head(100)
+# df_eddiagnosis = df_eddiagnosis.head(100)
+# df_pyxis = df_pyxis.head(100)
+# df_triage = df_triage.head(100)
 
 # taking relevant columns from MIMIC-IV-ED
 df_edstays = df_edstays[['subject_id','hadm_id','stay_id','intime','outtime','arrival_transport','disposition']]

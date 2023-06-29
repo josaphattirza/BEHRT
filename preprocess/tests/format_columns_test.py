@@ -40,8 +40,8 @@ spark = SparkSession.builder \
 # Read a CSV file
 df_vital = spark.read.csv("/home/josaphat/Desktop/research/mimic-iv-ed-2.0/2.0/ed/vitalsign.csv", inferSchema=True, header=True)
 df_eddiagnosis = spark.read.csv("/home/josaphat/Desktop/research/mimic-iv-ed-2.0/2.0/ed/diagnosis.csv", inferSchema=True, header=True)
-# df_vital = df_vital.limit(1000)
-# df_eddiagnosis = df_eddiagnosis.limit(1000)
+df_vital = df_vital.limit(1000)
+df_eddiagnosis = df_eddiagnosis.limit(1000)
 df_eddiagnosis = format_icd(df_eddiagnosis)
 
 
@@ -53,8 +53,8 @@ vital_columns_to_process = ["heartrate", "resprate"]
 eddiagnosis_columns_to_process = ["icd_code", "icd_title"]
 
 # Format df separately
-df_vital = format_data(df_vital, vital_columns_to_process)
-df_eddiagnosis = format_data(df_eddiagnosis, eddiagnosis_columns_to_process)
+df_vital, vital_dictionaries = format_data(df_vital, vital_columns_to_process)
+df_eddiagnosis, diagnosis_dictionaries = format_data(df_eddiagnosis, eddiagnosis_columns_to_process)
 
 
 # Perform the join

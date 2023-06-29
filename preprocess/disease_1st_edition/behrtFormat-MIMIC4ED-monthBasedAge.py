@@ -35,11 +35,11 @@ df_pat = pd.read_csv('/home/josaphat/Desktop/research/mimic-iv-2.1/hosp/patients
 df_edstays = pd.read_csv('/home/josaphat/Desktop/research/mimic-iv-ed-2.0/2.0/ed/edstays.csv')
 df_eddiagnosis = pd.read_csv('/home/josaphat/Desktop/research/mimic-iv-ed-2.0/2.0/ed/diagnosis.csv')
 
-# # # For testing purposes
-# df_adm = df_adm.head(100)
-# df_pat = df_pat.head(100)
-# df_edstays = df_edstays.head(100)
-# df_eddiagnosis = df_eddiagnosis.head(100)
+# # For testing purposes
+df_adm = df_adm.head(100)
+df_pat = df_pat.head(100)
+df_edstays = df_edstays.head(100)
+df_eddiagnosis = df_eddiagnosis.head(100)
 
 # taking relevant columns from MIMIC-IV-ED
 df_edstays = df_edstays[['subject_id','hadm_id','stay_id','intime','outtime','arrival_transport','disposition']]

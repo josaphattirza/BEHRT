@@ -186,7 +186,7 @@ class BertForMultiLabelPrediction(Bert.modeling.BertPreTrainedModel):
 
 
 
-
+# Old model
 # class BertForMultiLabelPrediction(Bert.modeling.BertPreTrainedModel):
 #     def __init__(self, config, num_labels, feature_dict):
 #         super(BertForMultiLabelPrediction, self).__init__(config)

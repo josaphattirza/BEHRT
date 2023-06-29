@@ -295,6 +295,16 @@ def np_med(df):
     output = pd.DataFrame(index=df.iloc[unqix[:-1],col_stayId], data=lg, columns=unq)
     return output
 
+def icd_converter(df):
+    # Convert all ICD 9 to 10 and get the first 3
+    for i, row in df.iterrows():
+        if row['icd_version'] == 9:
+            icd10 = convert_9to10(row['icd_code'])
+            df.at[i, 'icd_code'] = icd10[:3]
+        elif row['icd_version'] == 10:
+            df.at[i, 'icd_code'] = row['icd_code'][:3]
+
+    return df
 
 # def np_triage(df):
 #     df.sort_values('stay_id', inplace=True)

@@ -43,9 +43,9 @@ class BertEmbeddings(nn.Module):
         posi_embeddings = self.posi_embeddings(posi_ids)
 
         if age:
-            embeddings = word_embed + segment_embed + age_embed + posi_embeddings
+            embeddings = word_embed + med_word_embed + triage_word_embed + segment_embed + age_embed + posi_embeddings
         else:
-            embeddings = word_embed + segment_embed + posi_embeddings
+            embeddings = word_embed + med_word_embed + triage_word_embed + segment_embed + posi_embeddings
         embeddings = self.LayerNorm(embeddings)
         embeddings = self.dropout(embeddings)
         return embeddings

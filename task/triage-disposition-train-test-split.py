@@ -29,6 +29,7 @@ last_elem_with_sep = udf(lambda arr: [arr[-1]], ArrayType(StringType()))
 
 
 # # apply the UDF to the 'label' column
+# # this should be on ?
 # df = df.withColumn('label', last_elem_with_sep(df['label']))
 
 # # Define a UDF to replace 'EXPIRED' and 'OTHER' with 'OTHER'
