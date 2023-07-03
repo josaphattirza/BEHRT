@@ -44,7 +44,7 @@ optim_config = {
 global_params = {
     'batch_size': 64,
     'gradient_accumulation_steps': 1, # originally 1
-    'device': 'cpu',
+    'device': 'cuda:0',
     'output_dir': 'finetune-revisit-triage-automated',  # output dir
     'best_name': 'finetune-revisit-triage-monthbased-best', # output model name
     'max_len_seq': 64, # originally is 100, ?
@@ -54,7 +54,9 @@ global_params = {
     'min_visit': 3 # originally is 5
 }
 
-pretrain_model_path = 'triage-med-MLM-automated/triage-med-MLM-minvisit3-monthbased'  # pretrained MLM path
+# pretrain_model_path = 'triage-med-MLM-automated/triage-med-MLM-minvisit3-monthbased'  # pretrained MLM path
+pretrain_model_path = 'MLM-los-10epoch/MLM-los-automated'  # pretrained MLM path
+
 
 BertVocab = load_obj(file_config['vocab'])
 ageVocab, _ = age_vocab(max_age=global_params['max_age'], symbol=global_params['age_symbol'])
@@ -185,7 +187,7 @@ def load_model(path, model):
     model.load_state_dict(model_dict)
     return model
 
-mode = load_model(pretrain_model_path, model)
+model = load_model(pretrain_model_path, model)
 
 
 model = model.to(global_params['device'])
@@ -226,19 +228,16 @@ from itertools import cycle
 from sklearn.metrics import roc_auc_score
 from sklearn.preprocessing import LabelBinarizer
 
-def precision_test(logits, label):
-    sig = nn.Sigmoid()
-    output=sig(logits)
-    
-    # # testing out new models
-    # softmax = nn.Softmax(dim=1)
-    # output=softmax(logits)
+def precision_test(logits, label, epoch, taskname='noname'):
+    global max_auc
 
-    # Convert to numpy
-    output = output.numpy()
-    label = label.numpy()
-    
-    n_classes = label.shape[1] # Assuming label is one-hot encoded
+    softmax = nn.Softmax(dim=1)
+    output = softmax(logits)
+
+    output = output.detach().numpy()
+    label = label.detach().numpy()
+
+    n_classes = label.shape[1]
     fpr = dict()
     tpr = dict()
     roc_auc = dict()
@@ -248,35 +247,44 @@ def precision_test(logits, label):
     for i in range(n_classes):
         fpr[i], tpr[i], _ = roc_curve(label[:, i], output[:, i])
         roc_auc[i] = auc(fpr[i], tpr[i])
-        
-        # Weighted average AUC computation
+
         num_samples = np.sum(label[:, i])
         auc_score += roc_auc[i] * num_samples
         total_samples += num_samples
 
-    # Compute weighted-average ROC AUC
     roc_auc["weighted"] = auc_score / total_samples
 
     print(f'Weighted average AUC: {roc_auc["weighted"]}')
 
-    # Plot all ROC curves
-    plt.figure()
-    for i, color in zip(range(n_classes), cycle(['aqua', 'darkorange', 'cornflowerblue'])):
-        plt.plot(fpr[i], tpr[i], color=color, 
-                 label='ROC curve of class {0} (area = {1:0.2f})'
-                 ''.format(i, roc_auc[i]))
+    if roc_auc["weighted"] > max_auc:
+        max_auc = roc_auc["weighted"]
 
-    plt.plot([0, 1], [0, 1], 'k--')
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('Receiver Operating Characteristic to Multi-Class')
-    plt.legend(loc="lower right")
-    plt.show()
+        plt.figure()
+        for i, color in zip(range(n_classes), cycle(['aqua', 'darkorange', 'cornflowerblue'])):
+            plt.plot(fpr[i], tpr[i], color=color, 
+                     label='ROC curve of class {0} (area = {1:0.2f})'
+                     ''.format(i, roc_auc[i]))
 
+        plt.plot([0, 1], [0, 1], 'k--')
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('Receiver Operating Characteristic to Multi-Class')
+        plt.legend(loc="lower right")
+        
+        # Add the weighted average AUC to the plot
+        plt.text(0.32, 0.7, 'Weighted AUC = {0:0.5f}'.format(roc_auc["weighted"]), 
+                 bbox=dict(facecolor='red', alpha=0.5))
 
-    tempprc= sklearn.metrics.average_precision_score(label, output, average='samples')
+        # Create the results directory if it doesn't exist
+        if not os.path.exists(f'result-{taskname}'):
+            os.makedirs(f'result-{taskname}')
+
+        plt.savefig(f'result-{taskname}/roc_curve_epoch_{epoch}.png')
+        plt.close()
+
+    tempprc = sklearn.metrics.average_precision_score(label, output, average='samples')
     return tempprc, roc_auc, output, label,
 
 
@@ -379,17 +387,17 @@ def evaluation(e):
     y_label = torch.cat(y_label, dim=0)
     y = torch.cat(y, dim=0)
 
-    # if e == 19:
-    aps, roc, output, label = precision_test(y, y_label)
+    aps, roc, output, label = precision_test(y, y_label, e, "revisit72")
     return aps, roc, tr_loss
 
 
 
 best_pre = 0.0
+max_auc = 0
 
 # # originally epoch is 50
-# for e in range(50): 
-for e in range(20):
+# for e in range(20): 
+for e in range(5):
 
     train(e)
     aps, roc, test_loss = evaluation(e)

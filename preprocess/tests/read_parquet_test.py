@@ -4,7 +4,7 @@ from pyspark.sql import SparkSession
 
 # spark = SparkSession.builder.getOrCreate()
 
-data = pd.read_parquet('./behrt_triage_revisit_disposition_med_month_based_train')
+data = pd.read_parquet('./automated_final_train')
 
 # filtered_data = data[data['subject_id'] == 10000032]
 

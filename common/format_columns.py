@@ -28,7 +28,7 @@ def format_data(df: DataFrame, columns: list) -> Tuple[DataFrame, Dict[str, Dict
     vocab_dict = {}
 
     # define reserved keys
-    reserved_keys = ["SEP","CLS","MASK","UNK","PAD"]
+    reserved_keys = ["SEP", "CLS", "MASK", "UNK", "PAD"]
 
     # discretize all numerical columns and transform string columns to '_bucket' form
     for column in columns:
@@ -43,10 +43,21 @@ def format_data(df: DataFrame, columns: list) -> Tuple[DataFrame, Dict[str, Dict
 
         # build vocabulary dictionary for the processed column
         unique_vals = df.select(f"{column}_bucket").distinct().rdd.flatMap(lambda x: x).collect()
-        vocab_dict[f'{column}2idx'] = {val: idx+len(reserved_keys) for idx, val in enumerate(unique_vals)}
-        # prepend reserved keys
+
+        # Create a new dictionary to store the vocabulary
+        vocab = {}
+        # Add reserved keys to the dictionary
         for idx, key in enumerate(reserved_keys):
-            vocab_dict[f'{column}2idx'][key] = idx
+            vocab[key] = idx
+
+        # Remove 'UNK' from unique_vals if it exists
+        unique_vals = [val for val in unique_vals if val != 'UNK']
+
+        # Add the remaining unique values to the dictionary
+        for idx, val in enumerate(unique_vals):
+            vocab[val] = idx + len(reserved_keys)
+
+        vocab_dict[f'{column}2idx'] = vocab
 
 
 

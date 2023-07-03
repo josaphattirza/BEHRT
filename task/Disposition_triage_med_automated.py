@@ -31,8 +31,8 @@ warnings.filterwarnings(action='ignore')
 
 file_config = {
     'vocab':'vocab_dict',  # vocab token2idx idx2token
-    'train': './automated_disposition_train3/',
-    'test': './automated_disposition_test3/',
+    'train': './automated_disposition_train/',
+    'test': './automated_disposition_test/',
 }
 
 optim_config = {
@@ -54,9 +54,10 @@ global_params = {
     'min_visit': 3 # originally is 5
 }
 
-pretrain_model_path = 'triage-med-MLM-automated/triage-med-MLM-minvisit3-monthbased'  # pretrained MLM path
 
-# pretrain_model_path = 'exp-model/minvisit3-monthbased-model'
+pretrain_model_path = 'MLM-los-10epoch/MLM-los-automated'  # pretrained MLM path
+# pretrain_model_path = 'triage-med-MLM-automated/MLM-automated'  # pretrained MLM path
+
 
 BertVocab = load_obj(file_config['vocab'])
 ageVocab, _ = age_vocab(max_age=global_params['max_age'], symbol=global_params['age_symbol'])
@@ -107,7 +108,7 @@ model_config = {
 feature_dict = {
     'word':True,
     'med':True, # OWN EMBEDDINGS
-    'triage':False, # OWN EMBEDDINGS
+    'triage':True, # OWN EMBEDDINGS
     'seg':True,
     'age':True,
     'position': True
@@ -209,24 +210,6 @@ def precision(logits, label):
     print('tempprc', tempprc)
     return tempprc, output, label
 
-# def precision_test(logits, label):
-#     sig = nn.Sigmoid()
-#     output=sig(logits)
-#     tempprc= sklearn.metrics.average_precision_score(label.numpy(),output.numpy(), average='samples')
-#     roc = sklearn.metrics.roc_auc_score(label.numpy(),output.numpy(), average='samples')
-#     # print('auroc', roc)
-
-#     sig = nn.Sigmoid()
-#     output = sig(logits).numpy()
-
-#     # fpr, tpr, thresholds = sklearn.metrics.roc_curve(label.numpy().ravel(), output.ravel())
-#     # plt.plot(fpr, tpr)
-#     # plt.xlabel('False Positive Rate')
-#     # plt.ylabel('True Positive Rate')
-#     # plt.title('ROC Curve')
-#     # plt.show()
-    
-#     return tempprc, roc, output, label,
 
 from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
@@ -236,19 +219,16 @@ from itertools import cycle
 from sklearn.metrics import roc_auc_score
 from sklearn.preprocessing import LabelBinarizer
 
-def precision_test(logits, label):
-    # sig = nn.Sigmoid()
-    # output=sig(logits)
-    
-    # testing out new models
+def precision_test(logits, label, epoch, taskname='noname'):
+    global max_auc
+
     softmax = nn.Softmax(dim=1)
-    output=softmax(logits)
-    
-    # Convert to numpy
-    output = output.numpy()
-    label = label.numpy()
-    
-    n_classes = label.shape[1] # Assuming label is one-hot encoded
+    output = softmax(logits)
+
+    output = output.detach().numpy()
+    label = label.detach().numpy()
+
+    n_classes = label.shape[1]
     fpr = dict()
     tpr = dict()
     roc_auc = dict()
@@ -258,37 +238,45 @@ def precision_test(logits, label):
     for i in range(n_classes):
         fpr[i], tpr[i], _ = roc_curve(label[:, i], output[:, i])
         roc_auc[i] = auc(fpr[i], tpr[i])
-        
-        # Weighted average AUC computation
+
         num_samples = np.sum(label[:, i])
         auc_score += roc_auc[i] * num_samples
         total_samples += num_samples
 
-    # Compute weighted-average ROC AUC
     roc_auc["weighted"] = auc_score / total_samples
 
     print(f'Weighted average AUC: {roc_auc["weighted"]}')
 
-    # Plot all ROC curves
-    plt.figure()
-    for i, color in zip(range(n_classes), cycle(['aqua', 'darkorange', 'cornflowerblue'])):
-        plt.plot(fpr[i], tpr[i], color=color, 
-                 label='ROC curve of class {0} (area = {1:0.2f})'
-                 ''.format(i, roc_auc[i]))
+    if roc_auc["weighted"] > max_auc:
+        max_auc = roc_auc["weighted"]
 
-    plt.plot([0, 1], [0, 1], 'k--')
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('Receiver Operating Characteristic to Multi-Class')
-    plt.legend(loc="lower right")
-    plt.show()
+        plt.figure()
+        for i, color in zip(range(n_classes), cycle(['aqua', 'darkorange', 'cornflowerblue'])):
+            plt.plot(fpr[i], tpr[i], color=color, 
+                     label='ROC curve of class {0} (area = {1:0.2f})'
+                     ''.format(i, roc_auc[i]))
 
+        plt.plot([0, 1], [0, 1], 'k--')
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('Receiver Operating Characteristic to Multi-Class')
+        plt.legend(loc="lower right")
+        
+        # Add the weighted average AUC to the plot
+        plt.text(0.32, 0.7, 'Weighted AUC = {0:0.5f}'.format(roc_auc["weighted"]), 
+                 bbox=dict(facecolor='red', alpha=0.5))
 
-    tempprc= sklearn.metrics.average_precision_score(label, output, average='samples')
+        # Create the results directory if it doesn't exist
+        if not os.path.exists(f'result-{taskname}'):
+            os.makedirs(f'result-{taskname}')
+
+        plt.savefig(f'result-{taskname}/roc_curve_epoch_{epoch}.png')
+        plt.close()
+
+    tempprc = sklearn.metrics.average_precision_score(label, output, average='samples')
     return tempprc, roc_auc, output, label,
-
 
 
 
@@ -414,7 +402,7 @@ def evaluation(e):
     #     print(f"Logits: {logits_labels[i]}")
     #     print(f"Targets: {targets_labels[i]}\n")
 
-    aps, roc, output, label = precision_test(y, y_label)
+    aps, roc, output, label = precision_test(y, y_label, e, "disposition-los")
     return aps, roc, tr_loss
 
     # if e == 10:
@@ -424,10 +412,12 @@ def evaluation(e):
 
 
 best_pre = 0.0
+max_auc = 0.0  # global variable to store the maximum AUC
+
 
 # # originally epoch is 50
-# for e in range(50): 
-for e in range(50):
+# for e in range(20): 
+for e in range(5):
 
     train(e)
     aps, roc, test_loss = evaluation(e)

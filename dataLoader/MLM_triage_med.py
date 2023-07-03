@@ -48,7 +48,7 @@ class MLMLoader(Dataset):
         # pad age sequence and code sequence
         age = seq_padding(age, self.max_len, token2idx=self.age2idx)
         med = seq_padding(med, self.max_len, token2idx=self.med_vocab)
-        triage = seq_padding(med, self.max_len, token2idx=self.triage_vocab)
+        triage = seq_padding(triage, self.max_len, token2idx=self.triage_vocab)
 
 
         tokens, code, label = random_mask(code, self.vocab)

@@ -62,8 +62,8 @@ file_config = {
     'vocab':'vocab_dict',  # vocabulary idx2token, token2idx
     'data': './automated_final/',  # formated data 
     'model_path': 'triage-med-MLM-automated', # where to save model
-    'model_name': 'triage-med-MLM-minvisit3-monthbased', # model name
-    'file_name': 'triage-med-MLM-minvisit3-monthbased-log',  # log path
+    'model_name': 'MLM-automated', # model name
+    'file_name': 'MLM-automated-log',  # log path
 }
 create_folder(file_config['model_path'])
 
