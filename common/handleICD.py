@@ -1,7 +1,7 @@
 import pickle
 import sys
 import numpy as np
-sys.path.append('/home/josaphat/Desktop/research/BEHRT')
+sys.path.append('/home/josaphat/Desktop/research/ED-BERT-demo')
 
 import pandas as pd
 

@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/home/josaphat/Desktop/research/BEHRT')
+sys.path.append('/home/josaphat/Desktop/research/ED-BERT-demo')
 
 
 from common.icd_formatting import format_icd

@@ -4,7 +4,7 @@ from pyspark.ml.feature import QuantileDiscretizer
 from typing import Tuple, Dict
 import pickle
 import sys
-sys.path.append('/home/josaphat/Desktop/research/BEHRT')
+sys.path.append('/home/josaphat/Desktop/research/ED-BERT-demo')
 import os
 from pyspark.sql import Window 
 from pyspark.sql.functions import collect_list, concat, array, lit, flatten, row_number

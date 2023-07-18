@@ -8,7 +8,7 @@ from pyspark.sql.types import StringType, ArrayType
 import sys 
 import os
 
-sys.path.append('/home/josaphat/Desktop/research/BEHRT')
+sys.path.append('/home/josaphat/Desktop/research/ED-BERT-demo')
 
 # Create a SparkSession
 spark = SparkSession.builder.appName("Read Parquet File").getOrCreate()

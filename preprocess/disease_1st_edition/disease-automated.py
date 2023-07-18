@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/home/josaphat/Desktop/research/BEHRT')
+sys.path.append('/home/josaphat/Desktop/research/ED-BERT-demo')
 
 from datetime import date
 from dateutil.relativedelta import relativedelta
@@ -43,12 +43,12 @@ def calculate_age_on_current_admission_month_based(admission_date,anchor_time,an
     return age  
 
 # MIMIC IV
-df_adm = pd.read_csv('/home/josaphat/Desktop/research/mimic-iv-2.1/hosp/admissions.csv')
-df_pat = pd.read_csv('/home/josaphat/Desktop/research/mimic-iv-2.1/hosp/patients.csv')
+df_adm = pd.read_csv('data/mimic-iv-2.1/hosp/admissions.csv')
+df_pat = pd.read_csv('data/mimic-iv-2.1/hosp/patients.csv')
 
 # MIMIC IV ED
-df_edstays = pd.read_csv('/home/josaphat/Desktop/research/mimic-iv-ed-2.0/2.0/ed/edstays.csv')
-df_eddiagnosis = pd.read_csv('/home/josaphat/Desktop/research/mimic-iv-ed-2.0/2.0/ed/diagnosis.csv')
+df_edstays = pd.read_csv('data/mimic-iv-ed-2.0/2.0/ed/edstays.csv')
+df_eddiagnosis = pd.read_csv('data/mimic-iv-ed-2.0/2.0/ed/diagnosis.csv')
 
 # # # For testing purposes
 # df_adm = df_adm.head(100)

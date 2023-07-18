@@ -4,7 +4,11 @@ from pyspark.sql import SparkSession
 
 # spark = SparkSession.builder.getOrCreate()
 
-data = pd.read_parquet('./automated_final_train')
+# data = pd.read_parquet('./automated_NTUH_all')
+data = pd.read_parquet('./automated_NTUH_10_features')
+# data = pd.read_parquet('./automated_final')
+
+
 
 # filtered_data = data[data['subject_id'] == 10000032]
 

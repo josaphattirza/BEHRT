@@ -2,7 +2,7 @@ import pandas as pd
 import pickle
 import sys,os
 
-sys.path.append('/home/josaphat/Desktop/research/BEHRT')
+sys.path.append('/home/josaphat/Desktop/research/ED-BERT-demo')
 
 df = pd.read_parquet('behrt_format_mimic4ed')
 
