@@ -51,8 +51,8 @@ spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
 
 # # Load the pickle file into a Pandas DataFrame
 # data = pd.read_pickle('data_all.pkl')
-# data = pd.read_pickle('data/NTUH/data_new_all.pkl')
-data = pd.read_pickle('data/NTUH/data_new_1000.pkl')
+data = pd.read_pickle('data/NTUH/data_new_all.pkl')
+# data = pd.read_pickle('data/NTUH/data_new_1000.pkl')
 print('reached here')
 
 
@@ -76,6 +76,8 @@ def to_array(element):
 data['ttasLv2'] = data['ttasLv2'].apply(to_array)
 print('reached here')
 
+
+print(data.count())
 
 df = spark.createDataFrame(data)
 print('successfully convert pandas to spark')

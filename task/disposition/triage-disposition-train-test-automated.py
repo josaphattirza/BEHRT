@@ -11,7 +11,17 @@ import os
 sys.path.append('/home/josaphat/Desktop/research/ED-BERT-demo')
 
 # Create a SparkSession
-spark = SparkSession.builder.appName("Read Parquet File").getOrCreate()
+
+spark = SparkSession.builder \
+    .appName("example_app") \
+    .config("spark.driver.memory", "8g") \
+    .config("spark.executor.memory", "8g") \
+    .config("spark.master", "local[*]") \
+    .config("spark.executor.cores", "4") \
+    .config("spark.default.parallelism", "16") \
+    .getOrCreate()
+
+
 # Load the Parquet file
 df = spark.read.parquet("automated_los_final")
 
@@ -53,6 +63,37 @@ def replace_unk_with_pad(df):
 df = replace_unk_with_pad(df)
 
 
+# Count the occurrences of ['Yes'] and ['No'] in the 'label' column
+label_counts = df.groupBy('label').count()
+
+# Show the result
+label_counts.show()
+
+
+
+# Define a UDF to change 'EXPIRED', 'OTHER', 'HOME' to 'No', and 'ADMITTED' to 'Yes'
+def map_labels(label):
+    if label[0] == 'ADMITTED':
+        return ['Yes']
+    elif label[0] in ['EXPIRED', 'OTHER', 'HOME']:
+        return ['No']
+    else:
+        return label
+
+# Register the UDF
+map_labels_udf = udf(map_labels, ArrayType(StringType()))
+
+# Apply the UDF to the 'label' column
+df = df.withColumn('label', map_labels_udf(df['label']))
+
+
+# Count the occurrences of ['Yes'] and ['No'] in the 'label' column
+label_counts = df.groupBy('label').count()
+
+# Show the result
+label_counts.show()
+
+
 # Split the data into train and test sets
 train_data, test_data = df.randomSplit([0.8, 0.2], seed=1234)
 
@@ -60,5 +101,31 @@ train_data, test_data = df.randomSplit([0.8, 0.2], seed=1234)
 print("Training set size:", train_data.count())
 print("Test set size:", test_data.count())
 
-train_data.write.parquet('automated_los_final_disposition_train')
-test_data.write.parquet('automated_los_final_disposition_test')   
+train_data.write.parquet('automated_los_final_disposition_train_new_label')
+test_data.write.parquet('automated_los_final_disposition_test_new_label')   
+
+
+
+
+# # remove patients with more than one visit
+# from pyspark.sql import functions as F
+# # Define a user defined function (UDF) to calculate the count of 'SEP' in 'code' column
+# count_sep = F.udf(lambda s: s.count('SEP'))
+# # Apply the UDF to add a new column
+# test_data = test_data.withColumn('length', count_sep(F.col('code')))
+# train_data = train_data.withColumn('length', count_sep(F.col('code')))
+# # Filter rows where 'length' equals to 1
+# test_data = test_data.filter(F.col('length') == 1)
+# train_data = train_data.filter(F.col('length') == 1)
+
+# # Drop the 'length' column as it's not needed anymore
+# # test_data = test_data.drop('length')
+
+
+# print("Training set size:", train_data.count())
+# print("Test set size:", test_data.count())
+
+
+
+# train_data.write.parquet('automated_los_final_disposition_train_1visit')
+# test_data.write.parquet('automated_los_final_disposition_test_1visit')

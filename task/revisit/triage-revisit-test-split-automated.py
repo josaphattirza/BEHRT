@@ -76,6 +76,14 @@ def replace_unk_with_pad(df):
 df = replace_unk_with_pad(df)
 
 
+
+# Count the occurrences of ['Yes'] and ['No'] in the 'label' column
+label_counts = df.groupBy('label').count()
+
+# Show the result
+label_counts.show()
+
+
 # Split the data into train and test sets
 train_data, test_data = df.randomSplit([0.8, 0.2], seed=1234)
 
@@ -87,22 +95,22 @@ print("Test set size:", test_data.count())
 
 
 
-# remove patients with more than one visit
-from pyspark.sql import functions as F
-# Define a user defined function (UDF) to calculate the count of 'SEP' in 'code' column
-count_sep = F.udf(lambda s: s.count('SEP'))
-# Apply the UDF to add a new column
-test_data = test_data.withColumn('length', count_sep(F.col('code')))
-# Filter rows where 'length' equals to 1
-test_data = test_data.filter(F.col('length') == 0)
-# Drop the 'length' column as it's not needed anymore
-# test_data = test_data.drop('length')
+# # remove patients with more than one visit
+# from pyspark.sql import functions as F
+# # Define a user defined function (UDF) to calculate the count of 'SEP' in 'code' column
+# count_sep = F.udf(lambda s: s.count('SEP'))
+# # Apply the UDF to add a new column
+# test_data = test_data.withColumn('length', count_sep(F.col('code')))
+# # Filter rows where 'length' less than 2
+# test_data = test_data.filter(F.col('length') < 2)
+# # Drop the 'length' column as it's not needed anymore
+# # test_data = test_data.drop('length')
 
 
-print("Training set size:", train_data.count())
-print("Test set size:", test_data.count())
+# print("Training set size:", train_data.count())
+# print("Test set size:", test_data.count())
 
 
 
-train_data.write.parquet('automated_los_final_train_1visit')
-test_data.write.parquet('automated_los_final_test_1visit')
+# train_data.write.parquet('automated_los_final_train_1visit')
+# test_data.write.parquet('automated_los_final_test_1visit')

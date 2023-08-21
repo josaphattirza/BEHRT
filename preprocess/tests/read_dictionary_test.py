@@ -8,15 +8,15 @@ with open('vocab_dict_NTUH.pkl', 'rb') as f:
 for key in vocab_dict_NTUH.keys():
     print(key)
 
-print(vocab_dict_NTUH['triage2idx'])
+print(vocab_dict_NTUH['icd_code2idx'])
 
 
-# Sort the dictionary by keys in alphabetical order
-sorted_dict = dict(sorted(vocab_dict_NTUH['StayHour2idx'].items()))
+# # Sort the dictionary by keys in alphabetical order
+# sorted_dict = dict(sorted(vocab_dict_NTUH['StayHour2idx'].items()))
 
-# Print the sorted dictionary
-for key, value in sorted_dict.items():
-    print(key, value)
+# # Print the sorted dictionary
+# for key, value in sorted_dict.items():
+#     print(key, value)
 
 
 # # Load the pickle file
